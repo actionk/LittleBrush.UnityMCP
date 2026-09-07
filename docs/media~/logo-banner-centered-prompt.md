@@ -1,0 +1,5 @@
+# Centered banner
+
+Built-in image generation edit, followed by trimming the outer margins without stretching the artwork.
+
+Revise this narrow GitHub banner. Keep the editorial illustrated style, midnight/navy background, fine amber outlines, blue and amber cubes, paintbrush with mint stroke, and mauve tile. Exact title: 'Little Brush · Unity MCP'. IMPORTANT: all words Little Brush and Unity MCP must use EXACTLY THE SAME font size, SAME weight, same ordinary clean sans-serif font, cream-white color. Center the complete title as one single line on the ENTIRE banner canvas (not just within the right side). Make the decorative illustration substantially smaller and tuck it to the far left edge, with faint fine network decoration on the far right for balance. Artwork must not compete with or overlap centered text. Calm readable normal sans like Inter/Manrope, not wide futuristic lettering. Narrow shallow composition around 5:1, artwork confined to a shallow horizontal central band; no tall brush, no extra text. Preserve enough clear dark space around the centered title. Full bleed dark background. Do not reproduce the old oversized LittleBrush typography.

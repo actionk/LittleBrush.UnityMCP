@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: Bridge~/go.mod
+          cache: false
+      - name: Test bridge
+        working-directory: Bridge~
+        run: |
+          go test ./...
+          go vet ./...
+      - name: Verify bundled bridge matches source
+        working-directory: Bridge~
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: |
+          go build -trimpath -buildvcs=false -o mcp-bridge.ci.exe .
+          cmp mcp-bridge.ci.exe mcp-bridge.exe
+      - name: Verify bundled Windows bridge
+        working-directory: Bridge~
+        run: sha256sum --check mcp-bridge.exe.sha256

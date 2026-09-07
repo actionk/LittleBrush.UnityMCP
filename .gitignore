@@ -1,0 +1,15 @@
+# Local runtime evidence and client configuration
+Logs/
+Library/
+Temp/
+UserSettings/
+.codex/
+.claude/
+.cursor/
+.env
+.env.*
+!.env.example
+*.log
+*.log.*
+*.tmp
+.DS_Store

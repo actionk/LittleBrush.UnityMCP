@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unity MCP"
+  short_description: "Author in Unity and maintain its MCP bridge"
+  default_prompt: "Use $unity-mcp to inspect or author Unity state through the typed bridge."

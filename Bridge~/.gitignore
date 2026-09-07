@@ -1,0 +1,7 @@
+# Built binaries
+mcp-bridge
+mcp-bridge.exe
+mcp-bridge.exe~
+mcp-bridge-*
+mcp-bridge.log
+mcp-bridge.log.prev

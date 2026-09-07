@@ -1,0 +1,29 @@
+{
+  "name": "LittleBrushGames.UnityMCP.Modules.TestRunner.Tests",
+  "rootNamespace": "LittleBrushGames.Mcp.Modules.TestRunner.Tests",
+  "references": [
+    "LittleBrushGames.UnityMCP",
+    "LittleBrushGames.UnityMCP.Editor",
+    "LittleBrushGames.UnityMCP.Modules.TestRunner",
+    "UnityEditor.TestRunner",
+    "UnityEngine.TestRunner"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll",
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_TESTS_FRAMEWORK"],
+  "versionDefines": [
+    {
+      "name": "com.unity.test-framework",
+      "expression": "1.0.0",
+      "define": "UNITY_TESTS_FRAMEWORK"
+    }
+  ],
+  "noEngineReferences": false
+}

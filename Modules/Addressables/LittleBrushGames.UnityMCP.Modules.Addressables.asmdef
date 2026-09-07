@@ -1,0 +1,26 @@
+{
+  "name": "LittleBrushGames.UnityMCP.Modules.Addressables",
+  "rootNamespace": "LittleBrushGames.Mcp.Modules.Addressables",
+  "references": [
+    "LittleBrushGames.UnityMCP",
+    "LittleBrushGames.UnityMCP.Editor",
+    "Unity.Addressables.Editor"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": ["HAS_ADDRESSABLES"],
+  "versionDefines": [
+    {
+      "name": "com.unity.addressables",
+      "expression": "1.0.0",
+      "define": "HAS_ADDRESSABLES"
+    }
+  ],
+  "noEngineReferences": false
+}

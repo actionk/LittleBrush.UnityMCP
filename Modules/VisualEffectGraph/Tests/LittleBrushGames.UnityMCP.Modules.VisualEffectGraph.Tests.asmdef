@@ -1,0 +1,30 @@
+{
+  "name": "LittleBrushGames.UnityMCP.Modules.VisualEffectGraph.Tests",
+  "rootNamespace": "LittleBrushGames.Mcp.Modules.VisualEffectGraph.Tests",
+  "references": [
+    "LittleBrushGames.UnityMCP",
+    "LittleBrushGames.UnityMCP.Editor",
+    "LittleBrushGames.UnityMCP.Modules.VisualEffectGraph",
+    "LittleBrushGames.UnityMCP.Tests",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll",
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": ["HAS_VFX_GRAPH"],
+  "versionDefines": [
+    {
+      "name": "com.unity.visualeffectgraph",
+      "expression": "17.0.0",
+      "define": "HAS_VFX_GRAPH"
+    }
+  ],
+  "noEngineReferences": false
+}

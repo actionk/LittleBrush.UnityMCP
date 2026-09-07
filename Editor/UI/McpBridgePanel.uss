@@ -1,0 +1,724 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MCP Bridge Panel — USS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Root ───────────────────────────────────────────────────────────────── */
+
+.mcp-root {
+    flex-grow: 1;
+}
+
+/* ─── Tab Bar ────────────────────────────────────────────────────────────── */
+
+.tab-bar {
+    flex-direction: row;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    padding: 0;
+}
+
+.tab-btn {
+    height: 32px;
+    padding: 0 10px;
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    -unity-font-style: bold;
+    border-bottom-width: 2px;
+    border-bottom-color: rgba(0, 0, 0, 0);
+    transition-duration: 0.15s;
+}
+
+.tab-btn:hover {
+    color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.tab-btn.tab-active {
+    color: rgb(88, 166, 255);
+    border-bottom-color: rgb(88, 166, 255);
+}
+
+.tab-spacer {
+    flex-grow: 1;
+}
+
+.status-pill {
+    align-self: center;
+    margin-right: 10px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.status-pill.running {
+    background-color: rgba(63, 185, 80, 0.15);
+    color: rgb(63, 185, 80);
+}
+
+.status-pill.stopped {
+    background-color: rgba(248, 81, 73, 0.15);
+    color: rgb(248, 81, 73);
+}
+
+/* ─── Tab Content ────────────────────────────────────────────────────────── */
+
+.tab-content {
+    flex-grow: 1;
+    padding: 10px 12px;
+}
+
+.hidden {
+    display: none;
+}
+
+/* ─── Section ────────────────────────────────────────────────────────────── */
+
+.section {
+    margin-bottom: 16px;
+}
+
+.section-header {
+    -unity-font-style: bold;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Info Row ───────────────────────────────────────────────────────────── */
+
+.info-row {
+    flex-direction: row;
+    padding: 3px 0;
+}
+
+.info-label {
+    width: 140px;
+    min-width: 140px;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 12px;
+}
+
+.info-value {
+    flex-grow: 1;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.85);
+    -unity-text-align: middle-left;
+}
+
+.info-value.mono {
+    -unity-font-style: normal;
+    color: rgb(88, 166, 255);
+}
+
+/* ─── Tool List ──────────────────────────────────────────────────────────── */
+
+.tool-scroll {
+    flex-grow: 1;
+    max-height: 400px;
+    margin-top: 4px;
+}
+
+.tool-row {
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 8px;
+    margin-bottom: 2px;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.tool-row:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.tool-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.tool-dot.available {
+    background-color: rgb(63, 185, 80);
+}
+
+.tool-dot.unavailable {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.tool-name {
+    width: 200px;
+    min-width: 200px;
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgba(255, 255, 255, 0.85);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tool-desc {
+    flex-grow: 1;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────────────── */
+
+.action-row {
+    flex-direction: row;
+    margin-top: 8px;
+}
+
+.action-row > Button {
+    height: 28px;
+    margin-right: 6px;
+    padding: 0 14px;
+    border-radius: 4px;
+}
+
+.btn-primary {
+    background-color: rgb(31, 111, 235);
+    color: white;
+    border-width: 0;
+    -unity-font-style: bold;
+}
+
+.btn-primary:hover {
+    background-color: rgb(56, 132, 244);
+}
+
+.btn-secondary {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Install Cards ──────────────────────────────────────────────────────── */
+
+.install-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.install-card {
+    width: 48%;
+    margin: 1%;
+    padding: 12px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+    transition-duration: 0.15s;
+}
+
+.install-card:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: rgba(88, 166, 255, 0.3);
+}
+
+.install-card-toggle {
+    flex-direction: row;
+    align-items: center;
+    min-height: 28px;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    color: white;
+}
+
+.install-card-toggle:hover {
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.install-card-body {
+    margin-top: 8px;
+}
+
+.install-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.install-title {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.install-card-summary {
+    flex-grow: 1;
+    margin-left: 8px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    -unity-text-align: middle-right;
+}
+
+.install-chevron {
+    width: 16px;
+    margin-left: 6px;
+    color: rgba(255, 255, 255, 0.5);
+    -unity-text-align: middle-center;
+}
+
+.install-desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    white-space: normal;
+    margin-bottom: 10px;
+}
+
+.install-section-title {
+    margin: 4px 0 5px 2px;
+    font-size: 10px;
+    -unity-font-style: bold;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.install-scope-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 44px;
+    padding: 7px 8px;
+    margin-bottom: 6px;
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.06);
+    background-color: rgba(0, 0, 0, 0.10);
+}
+
+.install-scope-row.installed {
+    border-color: rgba(63, 185, 80, 0.22);
+    background-color: rgba(63, 185, 80, 0.055);
+}
+
+.install-scope-row.update-available {
+    border-color: rgba(240, 191, 98, 0.25);
+    background-color: rgba(240, 191, 98, 0.06);
+}
+
+.install-scope-info {
+    flex-grow: 1;
+    min-width: 0;
+    margin-right: 8px;
+}
+
+.install-scope-header {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.install-scope-name {
+    width: 48px;
+    min-width: 48px;
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.install-status {
+    padding: 1px 7px;
+    border-radius: 8px;
+    font-size: 9px;
+    -unity-font-style: bold;
+}
+
+.install-status.installed {
+    background-color: rgba(63, 185, 80, 0.16);
+    color: rgb(63, 185, 80);
+}
+
+.install-status.not-installed {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.install-status.update-available {
+    background-color: rgba(240, 191, 98, 0.16);
+    color: rgb(240, 191, 98);
+}
+
+.install-path {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.48);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.install-path.not-installed {
+    color: rgba(255, 255, 255, 0.34);
+}
+
+.install-actions {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.install-btn {
+    height: 24px;
+    border-radius: 4px;
+    -unity-font-style: bold;
+    font-size: 11px;
+    padding: 0 10px;
+    margin-left: 4px;
+}
+
+.install-btn.install-secondary {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.74);
+}
+
+.install-btn.install-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.install-btn.install-primary {
+    background-color: rgb(31, 111, 235);
+    border-width: 0;
+    color: white;
+}
+
+.install-btn.install-primary:hover {
+    background-color: rgb(56, 132, 244);
+}
+
+.install-btn.install-danger {
+    background-color: rgba(248, 81, 73, 0.08);
+    border-width: 1px;
+    border-color: rgba(248, 81, 73, 0.22);
+    color: rgb(248, 81, 73);
+}
+
+.install-btn.install-danger:hover {
+    background-color: rgba(248, 81, 73, 0.14);
+}
+
+/* ─── Settings ───────────────────────────────────────────────────────────── */
+
+.settings-group {
+    margin-bottom: 12px;
+}
+
+.settings-group > .unity-base-field {
+    margin-bottom: 3px;
+}
+
+.settings-hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-top: 2px;
+    margin-bottom: 8px;
+    white-space: normal;
+    padding-left: 2px;
+}
+
+.no-settings-box {
+    padding: 10px 12px;
+    background-color: rgba(60, 130, 210, 0.08);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(60, 130, 210, 0.15);
+    margin-bottom: 12px;
+}
+
+.no-settings-box > Label {
+    white-space: normal;
+    font-size: 12px;
+    color: rgba(180, 200, 230, 0.7);
+}
+
+/* ─── Manual Setup ───────────────────────────────────────────────────────── */
+
+.manual-box {
+    padding: 12px 14px;
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.06);
+    margin-top: 12px;
+}
+
+/* Trust & automation */
+.trust-preset-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.trust-preset-card {
+    width: 48%;
+    min-height: 76px;
+    margin: 1%;
+    padding: 11px 12px;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.09);
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.trust-preset-card.selected {
+    border-color: rgba(63, 185, 80, 0.35);
+    background-color: rgba(63, 185, 80, 0.07);
+}
+
+.trust-preset-title,
+.trust-category-title {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.trust-preset-description,
+.trust-category-description {
+    flex-grow: 1;
+    margin-top: 4px;
+    margin-bottom: 8px;
+    white-space: normal;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.52);
+}
+
+.trust-preset-card > Button {
+    align-self: flex-start;
+    min-width: 84px;
+    height: 25px;
+}
+
+.trust-category-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 44px;
+    padding: 7px 9px;
+    margin-bottom: 4px;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.025);
+}
+
+.trust-category-text {
+    flex-grow: 1;
+    min-width: 120px;
+    margin-right: 12px;
+}
+
+.trust-category-description {
+    margin-bottom: 0;
+}
+
+.trust-category-decision {
+    width: 115px;
+    min-width: 115px;
+}
+
+.trust-category-source {
+    width: 86px;
+    min-width: 86px;
+    margin-left: 8px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.34);
+    -unity-text-align: middle-right;
+}
+
+/* Standalone agent skill panel */
+.lbg-btn {
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 3px;
+    border-width: 1px;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: #484848;
+    color: #b0b0b0;
+    font-size: 11px;
+    -unity-text-align: middle-center;
+    margin-left: 2px;
+}
+
+.lbg-btn:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+    color: #e0e0e0;
+    border-color: #5a8ab5;
+}
+
+.lbg-btn--primary {
+    background-color: rgba(90, 138, 181, 0.75);
+    border-color: #5a8ab5;
+    color: #ffffff;
+}
+
+.lbg-btn--primary:hover {
+    background-color: #5a8ab5;
+    color: #ffffff;
+}
+
+.lbg-skill-panel {
+    padding: 16px 28px 18px;
+}
+
+.lbg-skill-panel__header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.lbg-skill-panel__title {
+    color: #f2f2f2;
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.lbg-skill-panel__subtitle,
+.lbg-skill-panel__hint {
+    color: #b8bdc4;
+    font-size: 12px;
+    white-space: normal;
+}
+
+.lbg-skill-panel__subtitle { margin-top: 2px; }
+.lbg-skill-panel__hint { max-width: 380px; -unity-text-align: upper-right; }
+
+.lbg-skill-panel__footer {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.lbg-skill-table {
+    border-width: 1px;
+    border-color: #30343a;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.lbg-skill-table__header,
+.lbg-skill-table__row {
+    flex-direction: row;
+    border-bottom-width: 1px;
+    border-bottom-color: #30343a;
+}
+
+.lbg-skill-table__header { min-height: 46px; background-color: rgba(255, 255, 255, 0.025); }
+.lbg-skill-table__row { min-height: 76px; }
+
+.lbg-skill-table__skill,
+.lbg-skill-table__scope {
+    padding: 8px 12px;
+    border-right-width: 1px;
+    border-right-color: #30343a;
+    color: #cdd1d6;
+    white-space: normal;
+}
+
+.lbg-skill-table__skill { width: 36%; }
+.lbg-skill-table__scope { width: 16%; }
+
+.lbg-skill-cell__top { flex-direction: row; align-items: center; }
+
+.lbg-skill-cell__icon {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    margin-right: 10px;
+    border-radius: 5px;
+    background-color: rgba(78, 198, 92, 0.24);
+    color: #71de71;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.lbg-skill-cell__text { flex-grow: 1; min-width: 0; }
+.lbg-skill-cell__open { margin-left: 8px; min-width: 74px; flex-shrink: 0; }
+
+.lbg-skill-cell__name {
+    color: #f2f2f2;
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.lbg-skill-cell__path,
+.lbg-skill-scope-header__path {
+    color: #9fa5ae;
+    font-size: 11px;
+    white-space: normal;
+    margin-top: 4px;
+}
+
+.lbg-skill-scope-header__title {
+    color: #d7dbe0;
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.lbg-skill-status { margin-bottom: 6px; font-size: 12px; }
+.lbg-skill-status--installed { color: #71de71; }
+.lbg-skill-status--update { color: #f0bf62; }
+.lbg-skill-status--missing { color: #b8bdc4; }
+
+.lbg-skill-actions { flex-direction: row; align-items: center; flex-wrap: wrap; }
+
+.lbg-skill-actions > .lbg-btn {
+    min-width: 72px;
+    height: 22px;
+    margin-left: 0;
+    margin-right: 6px;
+    margin-bottom: 4px;
+}
+
+/* Shared compact layout, including narrow docked windows. */
+.action-row { flex-wrap: wrap; }
+.action-row > Button { margin-bottom: 4px; height: 26px; }
+.install-card { padding: 8px; }
+.trust-preset-card { padding: 8px; }
+.settings-hint { color: rgb(165, 170, 176); }
+.info-value { white-space: normal; min-width: 0; }
+.tool-name { width: 190px; min-width: 140px; }
+.compact .install-card, .compact .trust-preset-card { width: 98%; }
+.compact .trust-category-row { flex-wrap: wrap; }
+.compact .trust-category-text { width: 100%; margin-bottom: 4px; }
+.compact .tool-desc { display: none; }
+.compact .tab-btn { padding-left: 7px; padding-right: 7px; font-size: 11px; }
+.test-history-row { padding: 4px 8px; }
+.test-history-timing { font-size: 11px; color: rgb(165, 170, 176); }
+.light-theme .section-header, .light-theme .info-value,
+.light-theme .tool-name, .light-theme .install-title,
+.light-theme .trust-preset-title, .light-theme .trust-category-title { color: rgb(35, 38, 42); }
+.light-theme .settings-hint, .light-theme .info-label, .light-theme .tool-desc,
+.light-theme .install-desc, .light-theme .install-card-summary,
+.light-theme .trust-preset-description, .light-theme .trust-category-description,
+.light-theme .trust-category-source, .light-theme .test-history-timing { color: rgb(80, 85, 90); }
+.light-theme .btn-secondary, .light-theme .tab-btn { color: rgb(45, 50, 55); }
+
+.mcp-root .btn-primary, .mcp-root .btn-secondary { min-height: 24px; padding: 3px 10px; }
+.mcp-root .tab-content > Button { align-self: flex-start; }
+.compact .trust-category-text { flex-basis: 100%; flex-shrink: 0; min-width: 0; }
+.compact .tool-name { flex-grow: 1; width: auto; }
+.light-theme .no-settings-box > Label { color: rgb(45, 55, 65); }
+.light-theme .status-pill.running { color: rgb(25, 105, 40); }
+.light-theme .install-path, .light-theme .install-path.not-installed,
+.light-theme .install-section-title, .light-theme .install-scope-name { color: rgb(65, 70, 75); }
+
+.mcp-root .unity-base-text-field__input,
+.mcp-root .unity-base-popup-field__input { background-color: rgb(50, 50, 50); color: rgb(230, 230, 230); }
+.light-theme .unity-base-text-field__input,
+.light-theme .unity-base-popup-field__input { background-color: rgb(240, 240, 240); color: rgb(35, 38, 42); }

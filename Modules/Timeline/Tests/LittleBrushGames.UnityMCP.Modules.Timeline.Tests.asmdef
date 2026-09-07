@@ -1,0 +1,31 @@
+{
+  "name": "LittleBrushGames.UnityMCP.Modules.Timeline.Tests",
+  "rootNamespace": "LittleBrushGames.Mcp.Modules.Timeline.Tests",
+  "references": [
+    "LittleBrushGames.UnityMCP",
+    "LittleBrushGames.UnityMCP.Editor",
+    "LittleBrushGames.UnityMCP.Modules.Timeline",
+    "LittleBrushGames.UnityMCP.Tests",
+    "Unity.Timeline",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll",
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": ["HAS_UNITY_TIMELINE"],
+  "versionDefines": [
+    {
+      "name": "com.unity.timeline",
+      "expression": "1.0.0",
+      "define": "HAS_UNITY_TIMELINE"
+    }
+  ],
+  "noEngineReferences": false
+}
