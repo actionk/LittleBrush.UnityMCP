@@ -42,7 +42,7 @@ feedback. Use the execution journal for snippet evidence. The file is created on
 
 ### Efficient calls
 
-- Edit source files directly with filesystem tools, then call `editor.ensure_compiled` once per coherent batch. Source-file editing is not an MCP operation.
+- Edit source files directly with filesystem tools, then call `editor.ensure_compiled` once per coherent batch. Source-file editing is not an MCP operation. The cache fingerprints imported sources and on-disk script, assembly, response-file, plugin, package-manifest, and project configuration inputs; ordinary art edits and hidden/sample directories are excluded.
 - `unity.tools`: request up to 16 schemas with `names`; unknown names return per-item errors. Cache schemas
   using `registryRevision`; availability and trust decisions remain dynamic. `includeDescriptions` adds
   descriptions to searches without schemas. Existing `name` lookups still work.

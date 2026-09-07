@@ -84,32 +84,60 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         }
 
         /// <summary>
-        /// Computes a stable hash of every script file Unity considers a compilation input.
-        /// Changes iff any script was added, removed, or touched since the last pass.
-        /// Must be called on the main thread — <see cref="CompilationPipeline.GetAssemblies()"/>
-        /// is main-thread only.
+        /// Fingerprints imported sources and on-disk compilation inputs, including files
+        /// added before AssetDatabase refresh. Must be called on the main thread.
         /// </summary>
         public static string ComputeInputHash()
         {
-            var assemblies = CompilationPipeline.GetAssemblies(AssembliesType.Editor);
-            var sb = new StringBuilder(64 * 1024);
-            foreach (var asm in assemblies)
+            var inputs = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var assembly in CompilationPipeline.GetAssemblies(AssembliesType.Editor))
             {
-                if (asm.sourceFiles == null) continue;
-                foreach (var src in asm.sourceFiles)
-                {
-                    FileInfo fi;
-                    try { fi = new FileInfo(src); }
-                    catch { continue; }
-                    if (!fi.Exists) continue;
-                    sb.Append(src).Append('|')
-                      .Append(fi.LastWriteTimeUtc.Ticks).Append('|')
-                      .Append(fi.Length).Append('\n');
-                }
+                foreach (var source in assembly.sourceFiles ?? Array.Empty<string>())
+                    inputs.Add(Path.GetFullPath(source));
+                string definition = CompilationPipeline.GetAssemblyDefinitionFilePathFromAssemblyName(assembly.name);
+                if (!string.IsNullOrEmpty(definition))
+                    inputs.Add(Path.GetFullPath(definition));
+            }
+            CollectCompilationInputs("Assets", inputs);
+            CollectCompilationInputs("Packages", inputs);
+            foreach (string path in new[] { "Packages/manifest.json", "Packages/packages-lock.json",
+                         "ProjectSettings/ProjectSettings.asset", "ProjectSettings/ProjectVersion.txt" })
+                inputs.Add(Path.GetFullPath(path));
+            return HashInputs(inputs);
+        }
+
+        private static void CollectCompilationInputs(string directory, ISet<string> inputs)
+        {
+            if (!Directory.Exists(directory)) return;
+            foreach (string file in Directory.EnumerateFiles(directory))
+            {
+                string source = file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
+                    ? file.Substring(0, file.Length - 5) : file;
+                string extension = Path.GetExtension(source).ToLowerInvariant();
+                if (extension is ".cs" or ".asmdef" or ".asmref" or ".rsp" or ".dll")
+                    inputs.Add(Path.GetFullPath(file));
+            }
+            foreach (string child in Directory.EnumerateDirectories(directory))
+            {
+                string name = Path.GetFileName(child);
+                if (!name.StartsWith(".", StringComparison.Ordinal) && !name.EndsWith("~", StringComparison.Ordinal))
+                    CollectCompilationInputs(child, inputs);
+            }
+        }
+
+        private static string HashInputs(IEnumerable<string> inputs)
+        {
+            var sb = new StringBuilder(64 * 1024);
+            foreach (string input in inputs)
+            {
+                var file = new FileInfo(input);
+                sb.Append(input).Append('|');
+                if (file.Exists)
+                    sb.Append(file.LastWriteTimeUtc.Ticks).Append('|').Append(file.Length);
+                sb.Append('\n');
             }
             using var sha = SHA1.Create();
-            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()));
-            return ToHex(bytes);
+            return ToHex(sha.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString())));
         }
 
         private static void OnStarted(object _)

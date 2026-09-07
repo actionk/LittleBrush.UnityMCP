@@ -12,6 +12,42 @@ namespace LittleBrushGames.Mcp.Tests.Providers
     public class EditorStatusProviderTests
     {
         [Test]
+        public void CompilationFingerprint_TracksUnimportedSourcesAndAssemblyConfiguration()
+        {
+            string root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mcp-inputs-" + System.Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(root);
+            try
+            {
+                string Fingerprint()
+                {
+                    var inputs = new SortedSet<string>(System.StringComparer.Ordinal);
+                    typeof(CompileErrorStore).GetMethod("CollectCompilationInputs", BindingFlags.NonPublic | BindingFlags.Static)
+                        .Invoke(null, new object[] { root, inputs });
+                    return (string)typeof(CompileErrorStore).GetMethod("HashInputs", BindingFlags.NonPublic | BindingFlags.Static)
+                        .Invoke(null, new object[] { inputs });
+                }
+                string before = Fingerprint();
+                foreach (string name in new[] { "Added.cs", "Example.asmdef", "Example.asmref", "csc.rsp", "Plugin.dll.meta" })
+                {
+                    string path = System.IO.Path.Combine(root, name);
+                    System.IO.File.WriteAllText(path, "first");
+                    string added = Fingerprint();
+                    Assert.AreNotEqual(before, added, name + " addition");
+                    System.IO.File.WriteAllText(path, "changed content");
+                    string changed = Fingerprint();
+                    Assert.AreNotEqual(added, changed, name + " edit");
+                    System.IO.File.Delete(path);
+                    Assert.AreEqual(before, Fingerprint(), name + " removal");
+                }
+                System.IO.Directory.CreateDirectory(System.IO.Path.Combine(root, "Samples~"));
+                System.IO.File.WriteAllText(System.IO.Path.Combine(root, "Samples~", "Ignored.cs"), "sample");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(root, "Art.png"), "image");
+                Assert.AreEqual(before, Fingerprint(), "Non-compilation content must not invalidate the cache.");
+            }
+            finally { System.IO.Directory.Delete(root, true); }
+        }
+
+        [Test]
         public void RegisterTools_DeclaresStatusAndPlaybackTools()
         {
             var provider = new EditorStatusProvider();
