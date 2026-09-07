@@ -78,12 +78,6 @@ flowchart LR
 
 This is the default Windows topology. Without a native bridge, the client connects directly to Unity's HTTP transport and does not get the separate process's reload protection. Ports are configurable. [Read the transport contract](docs/bridge-protocol.md).
 
-## Inside the Editor
-
-![Unity MCP client setup](docs/media~/getting-started.png)
-
-*Choose permissions, connect your AI client, and install the agent skill. Rendered from an isolated consumer project.*
-
 ## Try asking your assistant
 
 > “Inspect the current scene and explain its hierarchy without changing anything.”
