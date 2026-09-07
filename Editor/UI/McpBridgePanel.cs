@@ -410,18 +410,18 @@ namespace LittleBrushGames.Mcp.Editor.UI
         private readonly struct AiTarget
         {
             public readonly string Name;
-            public readonly int IconIndex;
+            public readonly string IconFile;
             public readonly string Desc;
             public readonly InstallOption[] Options;
 
             public AiTarget(
                 string name,
-                int iconIndex,
+                string iconFile,
                 string desc,
                 params InstallOption[] options)
             {
                 Name = name;
-                IconIndex = iconIndex;
+                IconFile = iconFile;
                 Desc = desc;
                 Options = options;
             }
@@ -460,7 +460,7 @@ namespace LittleBrushGames.Mcp.Editor.UI
 
         private static readonly AiTarget[] s_targets =
         {
-            new("Codex", 0, "Adds a project-scoped .codex/config.toml entry for trusted Codex projects.",
+            new("Codex", "codex.png", "Adds a project-scoped .codex/config.toml entry for trusted Codex projects.",
                 new InstallOption("Project", "Codex",
                     () => Path.Combine(ProjectRoot, ".codex", "config.toml"),
                     path => File.Exists(path) && McpClientConfigUtility.HasCodexServerConfig(File.ReadAllText(path)),
@@ -474,7 +474,7 @@ namespace LittleBrushGames.Mcp.Editor.UI
                     (path, port) => McpClientConfigUtility.WriteCodexConfig(path, port),
                     path => McpClientConfigUtility.RemoveCodexConfig(path))),
 
-            new("Claude Code", 1, "Creates .mcp.json in project root.",
+            new("Claude Code", "claude-code.png", "Creates .mcp.json in project root.",
                 new InstallOption("Project", "Claude Code",
                     () => Path.Combine(ProjectRoot, ".mcp.json"),
                     path => File.Exists(path) && McpClientConfigUtility.HasClaudeCodeServerConfig(File.ReadAllText(path)),
@@ -488,7 +488,7 @@ namespace LittleBrushGames.Mcp.Editor.UI
                     (path, port) => McpClientConfigUtility.WriteClaudeCodeConfig(path, port),
                     path => McpClientConfigUtility.RemoveClaudeCodeConfigFile(path))),
 
-            new("OpenCode", 2, "Adds Unity MCP to OpenCode as a remote server. Project config wins over global config.",
+            new("OpenCode", "opencode.png", "Adds Unity MCP to OpenCode as a remote server. Project config wins over global config.",
                 new InstallOption("Project", "OpenCode",
                     () => Path.Combine(ProjectRoot, "opencode.json"),
                     path => File.Exists(path) && McpClientConfigUtility.HasOpenCodeServerConfig(File.ReadAllText(path)),
@@ -503,7 +503,7 @@ namespace LittleBrushGames.Mcp.Editor.UI
                     (path, port) => McpClientConfigUtility.WriteOpenCodeConfig(path, port),
                     path => McpClientConfigUtility.RemoveOpenCodeConfig(path))),
 
-            new("Cursor", 3, "Creates .cursor/mcp.json in project root.",
+            new("Cursor", "cursor.png", "Creates .cursor/mcp.json in project root.",
                 new InstallOption("Project", "Cursor",
                     () => Path.Combine(ProjectRoot, ".cursor", "mcp.json"),
                     path => File.Exists(path) && McpClientConfigUtility.HasCursorServerConfig(File.ReadAllText(path)),
@@ -668,7 +668,6 @@ namespace LittleBrushGames.Mcp.Editor.UI
             _installGrid.Clear();
             var port = McpBridgeHost.Port;
 
-            var icons = AssetDatabase.LoadAssetAtPath<Texture2D>($"{McpRootPath}/Editor/UI/Icons/client-icons.png");
             foreach (var t in s_targets)
             {
                 var card = new VisualElement();
@@ -691,8 +690,7 @@ namespace LittleBrushGames.Mcp.Editor.UI
                 header.AddToClassList("install-card-toggle");
                 var icon = new Image
                 {
-                    image = icons,
-                    uv = new Rect(t.IconIndex * 0.25f, 0.25f, 0.25f, 0.5f),
+                    image = AssetDatabase.LoadAssetAtPath<Texture2D>($"{McpRootPath}/Editor/UI/Icons/{t.IconFile}"),
                     scaleMode = ScaleMode.ScaleToFit,
                 };
                 icon.AddToClassList("install-icon");

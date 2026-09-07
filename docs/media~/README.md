@@ -2,7 +2,7 @@
 
 Logo options were generated with the built-in image generation tool using the user-provided ArtStyleGuide.png as a palette/style reference. The reference is not redistributed here. The README uses logo-banner-centered.png, with centered, equally sized title words and a shallow 1974 × 350 canvas. Earlier variants remain available for comparison.
 
-The screenshot is an offscreen render of the actual isolated-consumer MCP Getting Started panel, not an AI-generated UI. The client illustrations are original neutral pictograms from one generated sheet; see client-icons-prompt.md.
+The screenshot is an offscreen render of the actual isolated-consumer MCP Getting Started panel, not an AI-generated UI. The client selector uses the original product icons; provenance is recorded in Editor/UI/Icons/TRADEMARKS.md.
 
 ## Logo option 1
 

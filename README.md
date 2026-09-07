@@ -190,4 +190,4 @@ Run `go test ./...` and `go vet ./...` from `Bridge~`. CI tests the Go bridge an
 
 ## License
 
-[MIT](LICENSE.md). Bundled Roslyn components include their own [licenses, notices, and provenance](ThirdParty/Roslyn/README.md). Client names identify compatible products; the [client illustrations](Editor/UI/Icons/TRADEMARKS.md) are original neutral artwork, not official logos.
+[MIT](LICENSE.md). Bundled Roslyn components include their own [licenses, notices, and provenance](ThirdParty/Roslyn/README.md). Client names and logos identify compatible products and belong to their respective owners; see [icon provenance](Editor/UI/Icons/TRADEMARKS.md).
