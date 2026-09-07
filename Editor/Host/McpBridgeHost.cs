@@ -281,8 +281,8 @@ namespace LittleBrushGames.Mcp.Editor.Host
 
                 if (useBridge && bridgeExists)
                 {
-                    var bridgePort = settings?.Port ?? Port;
-                    var unityPort = settings?.BridgeUnityPort ?? 48766;
+                    var bridgePort = Port;
+                    var unityPort = PortResolver.ResolveUnityPort();
                     s_bridgeTransport = new BridgeTransport(s_router, s_log, bridgePort, unityPort);
                     s_bridgeTransport.ConnectionLost += OnBridgeConnectionLost;
                     // Forward notifications from broadcaster to the Go bridge so it can

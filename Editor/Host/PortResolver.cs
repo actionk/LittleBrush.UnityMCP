@@ -18,5 +18,13 @@ namespace LittleBrushGames.Mcp.Editor.Host
 
             return DefaultPort;
         }
+        public static int ResolveUnityPort()
+        {
+            var env = Environment.GetEnvironmentVariable("LITTLEBRUSH_MCP_UNITY_PORT");
+            if (int.TryParse(env, out var port) && port is > 0 and < 65536)
+                return port;
+
+            return McpBridgeSettings.GetOrLoad()?.BridgeUnityPort ?? 48766;
+        }
     }
 }

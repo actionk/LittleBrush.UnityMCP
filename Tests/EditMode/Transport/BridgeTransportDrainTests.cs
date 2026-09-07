@@ -10,6 +10,18 @@ namespace LittleBrushGames.Mcp.Tests.Transport
 {
     public class BridgeTransportDrainTests
     {
+        [Test]
+        public void ForeignBridge_IsRejectedWithoutTakingOwnership()
+        {
+            using var transport = new BridgeTransport(null, null);
+            var validate = typeof(BridgeTransport).GetMethod("ValidateBridgeOwner", BindingFlags.Instance | BindingFlags.NonPublic);
+            var health = new JObject { ["projectPath"] = "/another-project/Assets", ["projectHash"] = "foreign" };
+            var error = Assert.Throws<TargetInvocationException>(() => validate.Invoke(transport, new object[] { health }));
+            Assert.That(error.InnerException, Is.TypeOf<System.InvalidOperationException>());
+            Assert.That(error.InnerException.Message, Does.Contain("left running"));
+            Assert.That(transport.IsRunning, Is.False);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void CompletedResponseCanBeDeliveredWhileCancellationUnwinds(bool duringDispose)

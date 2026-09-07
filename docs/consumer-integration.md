@@ -84,7 +84,7 @@ Windsurf currently uses a global MCP config file at `~/.codeium/windsurf/mcp_con
 
 ## Port override
 
-Default port is `48765`. Override via the `LITTLEBRUSH_MCP_PORT` environment variable before launching Unity. Useful when running multiple Unity projects side by side.
+Default HTTP port is `48765`. Override via `LITTLEBRUSH_MCP_PORT` before launching Unity; this applies to both direct and bridge transports. In bridge mode, also assign a distinct internal TCP port with `LITTLEBRUSH_MCP_UNITY_PORT` (otherwise the saved Unity transport port is used). For example, use `48769` and `48770` respectively when running another project alongside the defaults. A bridge owned by another project is rejected without terminating it.
 
 ## Adding editor tools
 

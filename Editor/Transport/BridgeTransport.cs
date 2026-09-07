@@ -234,13 +234,16 @@ namespace LittleBrushGames.Mcp.Editor.Transport
             if (health == null)
                 return false;
 
-            if (HealthMatchesCurrentProject(health))
-                return true;
+            ValidateBridgeOwner(health);
+            return true;
+        }
 
-            var owner = health["projectPath"]?.ToString();
-            _log.Log(LogLevel.Warn, $"MCP bridge on :{_bridgePort} belongs to {owner}; restarting for {Application.dataPath}");
-            KillBridgeFromHealth(health);
-            return false;
+        private void ValidateBridgeOwner(JObject health)
+        {
+            if (!HealthMatchesCurrentProject(health))
+                throw new InvalidOperationException(
+                    $"MCP bridge on :{_bridgePort} belongs to {health["projectPath"]}; " +
+                    "choose separate MCP HTTP and Unity transport ports. The existing bridge was left running.");
         }
 
         private JObject GetBridgeHealth()
@@ -648,28 +651,6 @@ namespace LittleBrushGames.Mcp.Editor.Transport
             KillBridgeAtPath(bridgePath);
         }
 
-        private void KillBridgeFromHealth(JObject health)
-        {
-            var bridgeProcessId = health["bridgeProcessId"]?.Value<int>() ?? 0;
-            if (bridgeProcessId > 0 && TryKillProcess(bridgeProcessId))
-                return;
-
-            var projectPath = health["projectPath"]?.ToString();
-            if (string.IsNullOrEmpty(projectPath))
-                return;
-
-            var lastProcessName = "";
-            foreach (var fileName in BridgeExecutableNames())
-            {
-                var path = Path.Combine(projectPath, "Plugins", "LittleBrushGames", "Mcp", "Bridge~", fileName);
-                var processName = Path.GetFileNameWithoutExtension(path);
-                if (string.Equals(processName, lastProcessName, StringComparison.OrdinalIgnoreCase))
-                    continue;
-                lastProcessName = processName;
-                KillBridgeAtPath(path);
-            }
-        }
-
         private void KillBridgeAtPath(string bridgePath)
         {
             var processName = string.IsNullOrEmpty(bridgePath)
@@ -709,30 +690,6 @@ namespace LittleBrushGames.Mcp.Editor.Transport
                 {
                     proc.Dispose();
                 }
-            }
-        }
-
-        private bool TryKillProcess(int processId)
-        {
-            try
-            {
-                using var proc = Process.GetProcessById(processId);
-                if (!proc.ProcessName.StartsWith("mcp-bridge", StringComparison.OrdinalIgnoreCase))
-                {
-                    _log.Log(LogLevel.Warn, $"Refusing to kill non-MCP process {processId} ({proc.ProcessName})");
-                    return false;
-                }
-
-                proc.Kill();
-                _log.Log(LogLevel.Info, $"Killed MCP bridge process (PID: {proc.Id})");
-                if (proc.Id == _bridgeProcessId)
-                    _bridgeProcessId = -1;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _log.Log(LogLevel.Warn, $"Failed to kill bridge process {processId}: {ex.Message}");
-                return false;
             }
         }
 
