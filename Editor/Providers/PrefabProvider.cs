@@ -187,6 +187,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "prefab.preview_screenshot",
+                RequiresGraphics = true,
                 Description = "Render a UI or 3D prefab offscreen in an isolated preview scene during Edit or Play Mode. UI prefabs report resolved layout ownership, clipping, overlap, and text-fit warnings; 3D prefabs copy gameplay camera settings, auto-frame renderer bounds, and accept an optional Euler rotation override.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Sync,
@@ -219,6 +220,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                         ""padding"": { ""type"": ""integer"", ""minimum"": 0, ""maximum"": 512 },
                         ""background"": { ""type"": ""string"", ""description"": ""Camera clear color, for example #00000000 or #1b1b1bff."" },
                         ""cameraPath"": { ""type"": ""string"", ""description"": ""3D only: hierarchy path of the gameplay camera to copy; defaults to Camera.main."" },
+                        ""standaloneCamera"": { ""type"": ""boolean"", ""description"": ""3D only: render with a neutral perspective camera without requiring a loaded scene camera. Use for asset-only batch workers; does not reproduce gameplay camera effects."" },
                         ""rotation"": {
                             ""type"": ""object"",
                             ""description"": ""3D only: optional Euler rotation in degrees applied to the temporary preview camera before framing."",
@@ -1138,9 +1140,12 @@ namespace LittleBrushGames.Mcp.Editor.Providers
 
         private static ValueTask<ToolResult> Preview3dScreenshot(string path, ToolContext ctx)
         {
-            var sourceCamera = ResolveGameplayCamera((string)ctx.Arguments["cameraPath"]);
-            var width = Mathf.Clamp(ctx.Arguments["width"]?.Value<int>() ?? GetDefaultCameraWidth(sourceCamera), 64, 4096);
-            var height = Mathf.Clamp(ctx.Arguments["height"]?.Value<int>() ?? GetDefaultCameraHeight(sourceCamera), 64, 4096);
+            var standalone = ctx.Arguments.Value<bool?>("standaloneCamera") == true;
+            if (standalone && !string.IsNullOrWhiteSpace((string)ctx.Arguments["cameraPath"]))
+                throw new McpToolException(McpErrorCodes.InvalidParams, "standaloneCamera and cameraPath are mutually exclusive.");
+            var sourceCamera = standalone ? null : ResolveGameplayCamera((string)ctx.Arguments["cameraPath"]);
+            var width = Mathf.Clamp(ctx.Arguments["width"]?.Value<int>() ?? (standalone ? 512 : GetDefaultCameraWidth(sourceCamera)), 64, 4096);
+            var height = Mathf.Clamp(ctx.Arguments["height"]?.Value<int>() ?? (standalone ? 512 : GetDefaultCameraHeight(sourceCamera)), 64, 4096);
             var framePadding = Mathf.Clamp(ctx.Arguments["framePadding"]?.Value<float>() ?? 0.1f, 0f, 1f);
             var rotation = ReadEulerRotation(ctx.Arguments["rotation"]);
             var background = (string)ctx.Arguments["background"];
@@ -1167,7 +1172,18 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 };
                 SceneManager.MoveGameObjectToScene(previewObject, previewScene);
                 var camera = previewObject.AddComponent<Camera>();
-                CopyGameplayCamera(sourceCamera, camera);
+                if (sourceCamera != null) CopyGameplayCamera(sourceCamera, camera);
+                else
+                {
+                    camera.clearFlags = CameraClearFlags.SolidColor;
+                    camera.backgroundColor = new Color(0.12f, 0.12f, 0.12f, 1f);
+                    camera.transform.rotation = Quaternion.Euler(25f, 35f, 0f);
+                    var light = previewObject.AddComponent<Light>();
+                    light.type = LightType.Directional;
+                    light.intensity = 1f;
+                    light.cullingMask = 1 << PreviewLayer;
+                }
+                camera.scene = previewScene;
                 camera.enabled = false;
                 camera.cullingMask = 1 << PreviewLayer;
                 camera.aspect = width / (float)height;
@@ -1202,12 +1218,13 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 }
 
                 var png = texture.EncodeToPNG();
-                var cameraPath = SceneSerializer.GetHierarchyPath(sourceCamera.gameObject);
+                var cameraPath = sourceCamera != null ? SceneSerializer.GetHierarchyPath(sourceCamera.gameObject) : null;
                 return new ValueTask<ToolResult>(ToolResult.Ok(new JObject
                 {
                     ["path"] = path,
                     ["previewType"] = "3d",
-                    ["camera"] = sourceCamera.name,
+                    ["camera"] = sourceCamera != null ? sourceCamera.name : "standalone",
+                    ["standaloneCamera"] = standalone,
                     ["cameraPath"] = cameraPath,
                     ["width"] = width,
                     ["height"] = height,

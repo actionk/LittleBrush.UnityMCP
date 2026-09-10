@@ -992,6 +992,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
         private static JArray GetUntitledLoadedScenes()
         {
             var scenes = new JArray();
+            if (HasEmptyBatchScene()) return scenes;
             for (var i = 0; i < EditorSceneManager.sceneCount; i++)
             {
                 var scene = EditorSceneManager.GetSceneAt(i);
@@ -1040,6 +1041,14 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             return saved;
         }
 
+        private static bool HasEmptyBatchScene()
+        {
+            if (!UnityEngine.Application.isBatchMode || EditorSceneManager.sceneCount != 1) return false;
+            var scene = EditorSceneManager.GetSceneAt(0);
+            return scene.IsValid() && scene.isLoaded && string.IsNullOrEmpty(scene.path)
+                && !scene.isDirty && scene.rootCount == 0;
+        }
+
         private static string CaptureLoadedSceneState()
         {
             var scenes = new List<string> { $"count:{EditorSceneManager.sceneCount}" };
@@ -1071,6 +1080,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 });
             }
             var snapshot = new JObject { ["scenes"] = arr };
+            if (HasEmptyBatchScene()) snapshot["emptyBatchScene"] = true;
             if (includeViews) snapshot["sceneViews"] = CaptureSceneViews();
             return snapshot;
         }
@@ -1123,6 +1133,13 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 throw new InvalidOperationException("Invalid scene snapshot; restore the original scenes manually.");
             if (scenes.Count == 0)
             {
+                if (snapshot.Value<bool?>("emptyBatchScene") == true)
+                {
+                    var current = SceneManager.GetActiveScene();
+                    if (!LooksLikeTestInfraScene(current.path, current.name) || GetDirtySavedScenes().Count > 0)
+                        throw new InvalidOperationException("Scene setup changed outside the batch test runner; current scenes were left untouched.");
+                    EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                }
                 RestoreSceneViews(snapshot["sceneViews"] as JArray);
                 return;
             }

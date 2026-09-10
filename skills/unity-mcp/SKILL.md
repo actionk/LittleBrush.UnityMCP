@@ -7,6 +7,14 @@ description: Operate the Unity Editor through the LittleBrushGames MCP bridge an
 
 Treat the live Unity MCP registry as the source of truth. Do not rely on a static tool inventory.
 
+## Access while Unity is closed
+
+Use the configured on-demand stdio MCP service normally: discovery is immediate and the first tool request starts the project's installed Unity Editor in batch mode. The managed worker exits after five idle minutes; an already-open Editor stays open. Do not ask the user to start Unity when this transport is configured. Confirm `editor.status.projectPath` before work and inspect `worker` for ownership/graphics state.
+
+For setup, ports, logs, and optional official Unity CLI support, read the plugin's `Assets/Plugins/LittleBrushGames/Mcp/docs/consumer-integration.md`. The optional `lbg_mcp_tools` and `lbg_mcp_call` Pipeline commands are supported transports for the same typed MCP gateway, not fallback scripting. Fetch the tool schema before invocation. Other Pipeline commands still follow the project's fallback and approval rules.
+
+Honor `requiresGraphics`, `requiresInteractiveEditor`, and `environmentUnavailableReason` in descriptors. Use `prefab.preview_screenshot` with `standaloneCamera: true` for asset-only 3D previews without a scene camera; do not present that view as gameplay-camera validation. Batch `Ask` decisions return `approval_required_in_batch`; report the exact policy restriction and configure it only within the user's authorization. Never auto-grant permissions or close another Editor to make a worker start.
+
 ## MCP-first boundary
 
 Use the bridge for Unity Editor state and serialized Unity assets: scenes, prefabs, Addressables, importer settings, materials, ScriptableObjects, VFX, generated or baked assets, compilation, tests, and previews.

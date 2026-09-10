@@ -329,6 +329,12 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 ["activeScenePath"] = McpBridgeHost.CachedActiveScenePath,
                 ["activeSceneName"] = McpBridgeHost.CachedActiveSceneName,
                 ["bridgePort"] = McpBridgeHost.Port,
+                ["worker"] = new JObject
+                {
+                    ["batchMode"] = McpBatchWorker.IsBatchMode,
+                    ["managed"] = McpBatchWorker.IsOwned,
+                    ["graphicsAvailable"] = McpBatchWorker.HasGraphics,
+                },
                 ["compilePassCounter"] = CompileErrorStore.PassCounter,
                 ["lastCompileFinishedAt"] = CompileErrorStore.LastFinishedAt,
                 ["lastCompileStartedAt"] = CompileErrorStore.LastStartedAt,
@@ -493,6 +499,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
 
         private static bool IsCurrentlyAvailable(ToolDescriptor tool, bool isPlaying, bool isCompiling)
         {
+            if (McpBatchWorker.UnavailableReason(tool) != null) return false;
             if (isCompiling && (tool.Availability & ToolAvailability.Compiling) == 0)
                 return false;
 

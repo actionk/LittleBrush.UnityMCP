@@ -23,6 +23,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "editor.screenshot",
+                RequiresGraphics = true,
+                RequiresInteractiveEditor = true,
                 Description = "Capture a screenshot of the SceneView (edit/play) or GameView (play mode). Returns inline PNG via ImageContent. Args: { source?: 'SceneView'|'GameView', width?: int, height?: int }.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Sync,
@@ -41,6 +43,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "editor.window_screenshot",
+                RequiresGraphics = true,
+                RequiresInteractiveEditor = true,
                 Description = "Capture a visible Unity EditorWindow by type name or title. Captures the full window by default; region optionally crops in window-local logical coordinates from the top-left. Background capture reuses an already open window. Creating a temporary floating window requires activate=true and can steal focus. Returns inline PNG and logical/physical bounds. Args: { windowType?: string, title?: string, openIfNeeded?: bool, waitFrames?: int, floating?: bool, activate?: bool, width?: int, height?: int, region?: { x, y, width, height } }.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Async,

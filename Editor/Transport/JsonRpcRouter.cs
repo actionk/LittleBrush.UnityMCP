@@ -14,8 +14,8 @@ namespace LittleBrushGames.Mcp.Editor.Transport
 {
     public sealed class JsonRpcRouter
     {
-        private const string CatalogToolName = "unity.tools";
-        private const string CallToolName = "unity.call";
+        internal const string CatalogToolName = "unity.tools";
+        internal const string CallToolName = "unity.call";
 
         private static readonly JObject CatalogSchema = JObject.Parse(@"{
             ""type"": ""object"",
@@ -90,6 +90,7 @@ namespace LittleBrushGames.Mcp.Editor.Transport
 
         public async Task<JObject> HandleAsync(JObject request, CancellationToken ct, string scope = null)
         {
+            using var activity = McpBatchWorker.TrackActivity();
             var id = request["id"];
             var method = (string)request["method"];
             var parameters = request["params"] as JObject ?? new JObject();
@@ -186,6 +187,7 @@ namespace LittleBrushGames.Mcp.Editor.Transport
 
         private static bool IsCurrentlyAvailable(ToolDescriptor descriptor, bool isPlaying, bool isCompiling)
         {
+            if (McpBatchWorker.UnavailableReason(descriptor) != null) return false;
             if (isCompiling && (descriptor.Availability & ToolAvailability.Compiling) == 0)
                 return false;
 
@@ -505,6 +507,9 @@ namespace LittleBrushGames.Mcp.Editor.Transport
             if (descriptor.OutputSchema != null) result["outputSchema"] = descriptor.OutputSchema;
             if (descriptor.Annotations != null) result["annotations"] = descriptor.Annotations;
             result["requiresMainThread"] = descriptor.RequiresMainThread;
+            result["requiresGraphics"] = descriptor.RequiresGraphics;
+            result["requiresInteractiveEditor"] = descriptor.RequiresInteractiveEditor;
+            result["environmentUnavailableReason"] = McpBatchWorker.UnavailableReason(descriptor);
             result["reloadSafe"] = descriptor.ReloadSafe;
             result["execution"] = descriptor.Execution.ToString();
             var category = McpTrustPolicy.ResolveCategory(descriptor, new JObject());
