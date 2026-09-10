@@ -637,7 +637,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         {
             return sp.propertyType switch
             {
-                SerializedPropertyType.Integer => sp.intValue,
+                SerializedPropertyType.Integer => sp.longValue,
                 SerializedPropertyType.Boolean => sp.boolValue,
                 SerializedPropertyType.Float => sp.floatValue,
                 SerializedPropertyType.String => BoundedString(sp.stringValue, maxStringCharacters),

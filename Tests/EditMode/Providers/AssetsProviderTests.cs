@@ -21,6 +21,7 @@ namespace LittleBrushGames.Mcp.Tests.Providers
     {
         public AssetsProviderNestedProbe nested;
         public int[] values;
+        public long rendererId;
         public string text;
         public Gradient gradient;
         public AnimationCurve curve;
@@ -61,6 +62,26 @@ namespace LittleBrushGames.Mcp.Tests.Providers
         public void NormalizeProjectSettingsPath_RejectsTraversal()
         {
             Assert.Throws<McpToolException>(() => AssetsProvider.NormalizeProjectSettingsPath("ProjectSettings/../Assets/x.asset"));
+        }
+
+        [TestCase(long.MinValue)]
+        [TestCase(long.MaxValue)]
+        public void WriteAndRead_Preserve64BitIdentifiers(long value)
+        {
+            CreateProbe();
+            GetTool("project.assets.write").Handler(Ctx(new JObject
+            {
+                ["path"] = Path,
+                ["expectedHash"] = AssetDatabase.GetAssetDependencyHash(Path).ToString(),
+                ["properties"] = new JObject { ["rendererId"] = value },
+            }), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+            var result = GetTool("project.assets.read").Handler(Ctx(new JObject
+            {
+                ["path"] = Path,
+                ["propertySearch"] = "rendererId",
+            }), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+            Assert.That((long)result.StructuredContent["properties"]["rendererId"], Is.EqualTo(value));
+            Assert.That(AssetDatabase.LoadAssetAtPath<AssetsProviderProbe>(Path).rendererId, Is.EqualTo(value));
         }
 
         [Test]

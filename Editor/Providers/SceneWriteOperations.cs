@@ -225,6 +225,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             switch (sp.propertyType)
             {
                 case SerializedPropertyType.Integer:
+                    sp.longValue = sp.type == "long" ? value.Value<long>() : value.Value<int>();
+                    break;
                 case SerializedPropertyType.ArraySize:
                     sp.intValue = value.Value<int>();
                     break;
