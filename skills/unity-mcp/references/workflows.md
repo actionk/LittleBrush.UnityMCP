@@ -1,24 +1,24 @@
 # Unity MCP Workflows
 
-Confirm current availability with `editor.status` and `editor.tools.list`; names below use the registry names and may be exposed by a client with an MCP prefix.
+Confirm the intended project with `editor.status`. Fetch each target's live schema with `unity.tools`, then call it through `unity.call`; names below are registry targets.
 
 ## Readiness
 
-1. Call `editor.status`.
+1. Call `editor.status` and verify `projectPath` before interpreting project state or available providers.
 2. If `isCompiling` or `isUpdating` is true, use `editor.wait_ready` when available.
 3. If `mainThreadStalledMs` is high, wait before calling main-thread tools.
 4. If Play Mode is user-owned, use allowed inspection/preview tools and defer incompatible edits, imports, compilation, or tests.
 
 ## Scene object
 
-1. Find candidates with `scene.find`.
-2. Read the exact hierarchy path with `scene.read_object`.
-3. Apply one coherent `scene.write` batch.
-4. Set `save` only when persistence is intended, then read back the object.
+1. Find candidates with `scene.find`; prefer an explicit `scenePath` for background work.
+2. Read the exact object and obtain the scene's `assetHash` from `scene.read`.
+3. Apply one coherent `scene.write` batch with `expectedHash` for every existing scene. Resolve stale hashes or dirty-scene conflicts without bypassing them.
+4. Unloaded-scene writes require `save: true` and restore the previous active scene after the call. Read back the result. New scenes use explicit `scenePath`, `createIfMissing: true`, and `save: true`.
 
 ## Scene switching
 
-1. Call `scene.list` to capture the current loaded scene set and dirty flags.
+1. Prefer background operations with explicit `scenePath`. Only when a scene must remain loaded or active, call `scene.list` to capture the current set and dirty flags.
 2. If the requested set is already satisfied, stop; `scene.request_open` also returns an `already_open` no-op without a notification.
 3. Call `scene.request_open` with the target `path` and a concise `reason`. It only supports replacing the loaded scene set with the target scene. The local `EditorState` policy decides whether switching is denied, prompted, or allowed; dirty replacement also uses `UnsavedWork`.
 4. If switching is blocked by dirty scenes, do not save, close, or discard them. Report the conflict and ask the user to resolve it, then retry.
@@ -41,10 +41,10 @@ Do not delete a prefab root through `prefab.write`; use `asset.delete` only when
 
 ## Serialized ID replacement
 
-1. Choose `scene.replace_id` for one loaded scene or `prefab.replace_id` for one prefab.
+1. Choose `scene.replace_id` for one loaded or unloaded scene, or `prefab.replace_id` for one prefab.
 2. Call it with the explicit asset, `oldId`, `newId`, `dryRun: true`, and `save: false`.
 3. Inspect `matchCount`, match kinds, bounded `matches`, and `truncated`.
-4. Repeat the exact operation with `dryRun: false` and `save: true`, then read back when useful.
+4. Repeat with `dryRun: false` and `save: true`. Every existing scene also requires the preview's `assetHash` as `expectedHash`; then read back when useful.
 
 ## Imported animation and Timeline
 
@@ -65,8 +65,8 @@ Do not delete a prefab root through `prefab.write`; use `asset.delete` only when
 
 1. Ensure the Editor is ready and not in user-owned Play Mode.
 2. When the runner may replace scene state, let `tests.run` apply `UnsavedWork` to dirty saved scenes. Untitled scenes remain refused until the user chooses a path.
-3. Run the narrowest known test names, group, or assembly. The local `Tests` trust policy determines whether the run is denied, prompted, or allowed.
-4. Poll `tests.result` with bounded backoff.
+3. Fetch the live `tests.run` schema and run the narrowest known names, group, or assembly with a unique `runId` (32 lowercase hex characters). The local `Tests` trust policy determines whether the run is denied, prompted, or allowed.
+4. Poll `tests.result` until completion and scene restoration. Recover a lost launch response using the same ID; do not launch another run. Follow the returned polling hint.
 5. Report failing tests separately from tool, bridge, ownership, or main-thread errors.
 
 ## Visual check

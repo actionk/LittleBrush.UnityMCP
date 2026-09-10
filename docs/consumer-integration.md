@@ -1,5 +1,44 @@
 # Consumer Integration
 
+## Automatic startup and Unity CLI
+
+In **Getting Started**, enable **Start Unity automatically when a tool needs it**, then install or update the desired client configuration. The same native bridge executable runs as a small stdio MCP launcher. It advertises `unity.tools` and `unity.call` immediately; the first tool request starts a batch Editor if the configured project is closed. An already-running bridge is reused only after verifying its project identity. Each project needs distinct HTTP/TCP ports in MCP settings and its matching client configuration.
+
+The launcher requires the project's licensed Unity version installed locally and a native bridge binary. It preserves graphics for rendering, launches Windows workers without a visible console, and waits up to ten minutes for startup/import. Only workers launched with `-littlebrushMcpWorker` exit automatically, after five idle minutes. Active calls, handler cleanup, provider background jobs, imports, compilation, Play Mode, and dirty loaded scenes keep them alive. It never closes a manually opened Editor. Close a managed worker normally before opening that same project interactively; Unity permits only one Editor per project.
+
+Manual Codex example (replace paths and ports):
+
+```toml
+[mcp_servers.unity]
+command = 'D:\Projects\Example\Assets\Plugins\LittleBrushGames\Mcp\Bridge~\mcp-bridge.exe'
+args = ['--stdio', '--project', 'D:\Projects\Example', '--port', '48765', '--unity-port', '48766']
+startup_timeout_sec = 15
+tool_timeout_sec = 960
+```
+
+The launcher finds the exact version from `ProjectSettings/ProjectVersion.txt` in standard Unity Hub locations. For a custom installation, supply `--editor` with that version's executable (the installer captures the current executable). Update that path when upgrading Unity. `--idle-timeout` and `--startup-timeout` accept Go durations such as `5m`. Startup failures point to `Logs/littlebrush-mcp-worker.log`. A port owned by another project fails without taking it over. Failed tool calls are not automatically replayed by the launcher; existing bridge reload-safe rules still apply. Stdio supports cancellation, but does not forward the HTTP bridge's logging/progress SSE stream; use result/polling tools for long jobs.
+
+### Optional official Unity CLI adapter
+
+Install `com.unity.pipeline@0.6.0-exp.1` or a compatible newer version through Unity Package Manager. The plugin's optional Pipeline assembly registers two commands without making Pipeline a dependency of the base MCP plugin. Verified with Unity CLI `1.0.0-beta.9`, Pipeline `0.6.0-exp.1`, and Unity `6000.6.0f1` on Windows. macOS/Linux launch helpers cross-compile but have not been tested live.
+
+```powershell
+# Attach to a running Editor or worker:
+unity command lbg_mcp_tools --project-path 'D:\Projects\Example' --query '{"name":"editor.status"}'
+unity command lbg_mcp_call --project-path 'D:\Projects\Example' --tool editor.status
+
+# Start a batch Editor, execute one command, then exit:
+unity run 'D:\Projects\Example' --command lbg_mcp_call -- --tool editor.status
+```
+
+The `lbg_mcp_*` commands use the same router, validation, trust policy, writer lease, and handlers as MCP. They return structured results and inline images; gateway errors fail the CLI command. Pipeline's own commands are separate APIs and do not inherit LittleBrush trust controls. The stdio launcher does not need Unity CLI or Pipeline to start an Editor.
+
+### Batch capabilities and permissions
+
+`editor.status.worker` reports batch mode, managed ownership, and graphics availability. Tool schemas expose `requiresGraphics`, `requiresInteractiveEditor`, and `environmentUnavailableReason`. Graphics-backed batch workers can render prefab/scene previews. For a 3D prefab without a loaded scene camera, set `standaloneCamera: true` on `prefab.preview_screenshot`; the neutral camera does not reproduce gameplay camera effects. Scene previews still need the scene's camera. Editor window/SceneView/GameView captures require an interactive Editor. `-nographics` cannot render previews and returns `graphics_device_required` for declared graphics tools.
+
+`Ask` permissions return `approval_required_in_batch` immediately. Select the intended per-project trust policy interactively before relying on unattended mutations; the launcher never changes it. Dirty or populated untitled scenes remain protected by the test runner; a fresh batch worker's empty scene can be restored after tests. Third-party/custom providers must declare UI/graphics requirements and report deferred jobs as described in [provider authoring](provider-authoring.md); installing Pipeline cannot make arbitrary GUI-only code batch-compatible.
+
 ## Codex
 
 Create `.codex/config.toml` at your project root for project-scoped setup, or `~/.codex/config.toml` for global setup:

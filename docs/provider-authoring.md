@@ -1,5 +1,13 @@
 # Authoring MCP Tools
 
+## Batch workers and alternate transports
+
+Providers automatically appear through HTTP MCP, the on-demand stdio launcher, and the optional `lbg_mcp_tools`/`lbg_mcp_call` Unity Pipeline adapter. Keep operation logic in registered handlers so each transport uses the same validation and authorization.
+
+Declare `RequiresGraphics = true` for GPU rendering and `RequiresInteractiveEditor = true` for window/view operations. These requirements are independent of `RequiresMainThread`; undeclared requirements are not a promise that every custom tool works in batch. The dispatcher returns explicit environment errors and the catalog reports availability. Do not open dialogs from unattended handlers. Local `Ask` permissions fail in batch; never turn them into implicit approvals.
+
+Managed workers stop after an idle timeout. Calls remain active through handler completion, even when the transport times out or cancels. For jobs that outlive their handlers, set the existing thread-safe `BackgroundOperationActive` probe and preserve its state across reload through restoration/cleanup. Save authored assets before reporting success and preserve dirty user scenes. Do not use a detached task without reporting its lifetime.
+
 A tool provider is any class that implements `LittleBrushGames.Mcp.IToolProvider`. Editor providers additionally carry the `[McpToolProvider]` attribute so the plugin's discovery scan instantiates them on editor load.
 
 ## Minimal example

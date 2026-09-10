@@ -104,6 +104,12 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
             if (!_registry.TryGet(name, out var tool))
                 return new DispatchResult(new DispatchError(McpErrorCodes.MethodNotFound, $"Tool '{name}' not found."));
 
+            var environmentError = Host.McpBatchWorker.UnavailableReason(tool);
+            if (environmentError != null)
+                return new DispatchResult(new DispatchError(McpErrorCodes.ToolUnavailable,
+                    $"Tool '{name}' cannot run in this worker environment.",
+                    new JObject { ["reason"] = environmentError }));
+
             var backgroundError = BackgroundOperationError(tool, arguments);
             if (backgroundError != null) return new DispatchResult(backgroundError);
 
@@ -215,6 +221,7 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
 
                 async ValueTask<ToolResult> Work(CancellationToken token)
                 {
+                    using var activity = Host.McpBatchWorker.TrackActivity();
                     if (lockAcquired && Interlocked.CompareExchange(ref exclusiveState, 1, 0) != 0)
                         throw new OperationCanceledException(token);
 

@@ -390,6 +390,8 @@ namespace LittleBrushGames.Mcp.Editor.Host
             if (decision == McpTrustDecision.Allow) return;
             if (decision == McpTrustDecision.Deny)
                 throw Denied(tool, category, "denied_by_policy");
+            if (McpBatchWorker.IsBatchMode)
+                throw Denied(tool, category, "approval_required_in_batch");
 
             McpPermissionRequest request = null;
             await _mainThread.RunAsync(_ =>

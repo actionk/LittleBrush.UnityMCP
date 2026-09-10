@@ -20,6 +20,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "ui.preview_screenshot",
+                RequiresGraphics = true,
                 Description = "Render a UI Toolkit UXML asset offscreen in Edit Mode and return an inline PNG. Uses Unity's VisualTreeAsset preview renderer first, then falls back to an offscreen PanelSettings target. Args: { uxmlPath: string, styleSheetPaths?: string[], panelSettingsPath?: string, width?: int, height?: int, waitFrames?: int }.",
                 Availability = ToolAvailability.EditMode,
                 Execution = ToolExecution.Async,
