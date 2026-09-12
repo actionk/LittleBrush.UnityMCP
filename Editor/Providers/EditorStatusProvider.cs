@@ -94,7 +94,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "editor.stop",
-                Description = "Exit only a Play Mode session started by editor.play. User-started Play Mode is protected.",
+                ExclusiveGroup = "profiler",
+                Description = "Exit only a Play Mode session started by editor.play. User-started Play Mode is protected. profileExit starts CPU capture immediately before requesting exit and stops after returning to Edit Mode; returns the captureId for profiler.report.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Sync,
                 Annotations = new JObject { ["destructiveHint"] = true },
@@ -103,6 +104,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""required"": [""playSessionToken""],
                     ""properties"": {
                         ""playSessionToken"": { ""type"": ""string"", ""minLength"": 1 },
+                        ""profileExit"": { ""type"": ""boolean"" },
                         ""reason"": { ""type"": ""string"", ""maxLength"": 500 }
                     }
                 }"),
@@ -421,11 +423,14 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             if (!EditorApplication.isPlaying && !EditorApplication.isPlayingOrWillChangePlaymode)
                 return new ValueTask<ToolResult>(ToolResult.Ok(new JObject { ["action"] = "already_stopped" }));
 
-            McpPlayModeOwnership.Stop(ctx, ctx.Arguments.Value<string>("playSessionToken"), "editor.stop");
+            JObject capture = null;
+            McpPlayModeOwnership.Stop(ctx, ctx.Arguments.Value<string>("playSessionToken"), "editor.stop",
+                ctx.Arguments.Value<bool>("profileExit") ? () => capture = ProfilerProvider.StartExitCapture(ctx) : null);
             return new ValueTask<ToolResult>(ToolResult.Ok(new JObject
             {
                 ["action"] = "stop",
                 ["playModeOwner"] = "mcp",
+                ["capture"] = capture,
             }));
         }
 
@@ -748,7 +753,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             s_isOwned = false;
         }
 
-        internal static void Stop(ToolContext ctx, string token, string operation)
+        internal static void Stop(ToolContext ctx, string token, string operation, Action beforeStop = null)
         {
             var current = SessionState.GetString(TokenKey, "");
             if (string.IsNullOrEmpty(current) || !string.Equals(current, token, StringComparison.Ordinal))
@@ -772,6 +777,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 : reason.Replace('\r', ' ').Replace('\n', ' ').Trim();
             ctx.Logger?.Log(LogLevel.Warn,
                 $"Play Mode stop by '{operation}' for MCP-owned session, request '{ctx.RequestId}' ({reason}).");
+            beforeStop?.Invoke();
             EditorApplication.isPlaying = false;
         }
 
