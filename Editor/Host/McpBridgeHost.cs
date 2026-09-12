@@ -76,24 +76,9 @@ namespace LittleBrushGames.Mcp.Editor.Host
         public static IEnumerable<ToolDescriptor> EnumerateTools() => s_registry?.Enumerate() ?? Array.Empty<ToolDescriptor>();
         public static IReadOnlyList<string> RegistryErrors => s_registryErrors;
 
-        /// <summary>Alternate transports use the same gateway, policy, writer queue and logging.</summary>
-        public static System.Threading.Tasks.Task<Newtonsoft.Json.Linq.JObject> InvokeGatewayAsync(
-            string gateway, Newtonsoft.Json.Linq.JObject arguments, CancellationToken ct, string scope)
-        {
-            if (s_router == null) throw new InvalidOperationException("The LittleBrush MCP bridge is disabled or not started.");
-            if (gateway != JsonRpcRouter.CatalogToolName && gateway != JsonRpcRouter.CallToolName)
-                throw new ArgumentException("Only unity.tools and unity.call are gateway methods.", nameof(gateway));
-            return s_router.HandleAsync(new Newtonsoft.Json.Linq.JObject
-            {
-                ["jsonrpc"] = "2.0", ["id"] = Guid.NewGuid().ToString("N"), ["method"] = "tools/call",
-                ["params"] = new Newtonsoft.Json.Linq.JObject { ["name"] = gateway, ["arguments"] = arguments },
-            }, ct, scope);
-        }
-
         static McpBridgeHost()
         {
             McpEditorActivity.Initialize();
-            McpBatchWorker.Initialize();
             AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
             EditorApplication.quitting += OnEditorQuitting;
             McpRuntimeBridge.Changed += OnRuntimeProvidersChanged;
@@ -168,7 +153,7 @@ namespace LittleBrushGames.Mcp.Editor.Host
             }
 
             var settings = McpBridgeSettings.GetOrLoad();
-            if (settings != null && !settings.AutoStart && !McpBatchWorker.IsOwned)
+            if (settings != null && !settings.AutoStart)
             {
                 Debug.Log("[MCP] AutoStart disabled in McpBridgeSettings; use Tools/MCP/Restart Bridge to start.");
                 return;
@@ -344,18 +329,15 @@ namespace LittleBrushGames.Mcp.Editor.Host
         }
 
         private static bool BridgeExecutableExists()
-            => FindBridgeExecutable() != null;
-
-        internal static string FindBridgeExecutable()
         {
             var bridgeDir = Path.Combine(Application.dataPath, "Plugins", "LittleBrushGames", "Mcp", "Bridge~");
             foreach (var fileName in BridgeExecutableNames())
             {
                 var path = Path.Combine(bridgeDir, fileName);
                 if (File.Exists(path))
-                    return path;
+                    return true;
             }
-            return null;
+            return false;
         }
 
         private static string[] BridgeExecutableNames()

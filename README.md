@@ -13,7 +13,6 @@ Inspect scenes, edit prefabs, run tests, and capture previews through typed tool
 - **Small context, broad access.** Discover only the tool schemas you need through two MCP gateways.
 - **Unity-native operations.** Work with scenes, prefabs, assets, importers, materials, and tests.
 - **Local control.** Choose trust policies for edits, builds, code execution, and unsaved work.
-- **On-demand access.** Start a background Unity worker when needed and let it exit when idle. Optional Unity Pipeline commands use the same MCP tools.
 - **Evidence for better tools.** Local usage statistics and feature requests reveal recurring gaps.
 
 ## Getting Started
@@ -25,7 +24,6 @@ Inspect scenes, edit prefabs, run tests, and capture previews through typed tool
    ```
 
 2. **Connect** from **Window → LittleBrushGames → Unity MCP → Getting Started**. Choose your AI client, install its configuration, and restart that client.
-   Enable **Start Unity automatically when a tool needs it** for access without manually opening the Editor. See [automatic startup and Unity CLI](docs/consumer-integration.md#automatic-startup-and-unity-cli).
 3. **Try it:** ask your assistant, *“Check Unity's status and describe the current scene without changing it.”*
 
 Requires **Newtonsoft JSON** and **uGUI** in Unity Package Manager. The Windows bridge is included — no Go installation needed.

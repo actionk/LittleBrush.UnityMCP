@@ -12,7 +12,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
     internal sealed class TestRunProgressState
     {
         public string RunId, Mode, Status, CurrentTest, Error;
-        public int Completed, Failed, Revision;
+        public int Completed, Failed, Total, Revision;
         public long StartedAt;
         public bool CanCancel;
         internal bool IsTerminal => Status is "completed" or "failed" or "cancelled";
@@ -70,6 +70,13 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
         {
             if (s_state == null || s_state.RunId != runId) return;
             s_state.CurrentTest = name?.Length > 512 ? name[..512] + "…" : name;
+            Save();
+        }
+
+        internal static void RunStarted(string runId, int total)
+        {
+            if (s_state == null || s_state.RunId != runId) return;
+            s_state.Total = total;
             Save();
         }
 
@@ -284,7 +291,9 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             _phase.style.color = _text;
             _current.text = state.CurrentTest ?? (state.Status == "restoring" ? "Restoring your original scene setup." : "Waiting for the test runner…");
             _current.tooltip = state.CurrentTest;
-            _counts.text = $"{state.Completed} completed · {state.Failed} failed";
+            _counts.text = state.Total > 0
+                ? $"{state.Completed} of {state.Total} completed · {state.Failed} failed"
+                : $"{state.Completed} completed · {state.Failed} failed";
             _counts.style.color = state.Failed > 0 ? _error : _text;
             _elapsed.text = $"{(state.Mode == "PlayMode" ? "Play Mode" : "Edit Mode")} · {seconds / 60:00}:{seconds % 60:00} elapsed";
             _hint.text = state.Error ?? "Your scene will return when this run finishes.";

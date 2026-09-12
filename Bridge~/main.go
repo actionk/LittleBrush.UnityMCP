@@ -182,11 +182,6 @@ type UnityHello struct {
 }
 
 func main() {
-	stdio := flag.Bool("stdio", false, "Serve MCP over stdio and start this project's Editor on demand")
-	project := flag.String("project", "", "Unity project directory (required with --stdio)")
-	editor := flag.String("editor", "", "Unity Editor executable; otherwise locate the exact ProjectVersion in Unity Hub")
-	idle := flag.Duration("idle-timeout", 5*time.Minute, "Managed worker idle timeout")
-	startup := flag.Duration("startup-timeout", 10*time.Minute, "Maximum worker startup wait")
 	port := flag.Int("port", 48765, "HTTP port for MCP clients")
 	unityPort := flag.Int("unity-port", 48766, "TCP port for Unity connection")
 	logLevelStr := flag.String("log", "info", "Log level: debug/info/warn/error")
@@ -195,13 +190,6 @@ func main() {
 	bufferMax := flag.Int("buffer-max", 100, "Max buffered requests during reload")
 	rateLimit := flag.Float64("rate-limit", 60, "Max requests per second (0 = unlimited)")
 	flag.Parse()
-	if *stdio {
-		if err := runStdio(*project, *editor, *port, *unityPort, *idle, *startup, *requestTimeout, os.Stdin, os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		return
-	}
 
 	// Log to file next to the executable. Append mode so we keep history across
 	// bridge restarts (critical for debugging intermittent disconnects). Rotate

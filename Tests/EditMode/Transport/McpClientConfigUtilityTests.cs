@@ -9,42 +9,6 @@ namespace LittleBrushGames.Mcp.Tests.Transport
     public class McpClientConfigUtilityTests
     {
         [Test]
-        public void OnDemandCodexConfigSwitchesTransportWithoutRemovingOtherSettings()
-        {
-            var server = McpClientConfigUtility.BuildOnDemandServer("bridge.exe", ".", "Unity.exe", 48765, 48766);
-            const string existing = "[mcp_servers.unity]\nurl = \"http://old\"\nenabled = true\n\n[mcp_servers.other]\nurl = \"https://other\"\n";
-            var result = McpClientConfigUtility.UpsertOnDemandCodexConfig(existing, server);
-            Assert.That(result, Does.Not.Contain("http://old"));
-            Assert.That(result, Does.Contain("enabled = true"));
-            Assert.That(result, Does.Contain("https://other"));
-            Assert.That(result, Does.Contain("--stdio"));
-            Assert.That(McpClientConfigUtility.UpsertOnDemandCodexConfig(result, server), Is.EqualTo(result));
-            var http = McpClientConfigUtility.UpsertCodexServerConfig(result, 48765);
-            Assert.That(http, Does.Not.Contain("--stdio"));
-            Assert.That(http, Does.Not.Contain("command ="));
-            Assert.That(http, Does.Contain("enabled = true"));
-        }
-
-        [TestCase("Claude Code")]
-        [TestCase("Cursor")]
-        [TestCase("OpenCode")]
-        public void OnDemandJsonConfigPreservesOtherServersAndEnvironment(string client)
-        {
-            var section = client == "OpenCode" ? "mcp" : "mcpServers";
-            var root = new JObject { [section] = new JObject
-            {
-                ["other"] = new JObject { ["url"] = "https://other" },
-                ["unity"] = new JObject { ["url"] = "http://old", ["env"] = new JObject { ["EXAMPLE"] = "value" } },
-            }};
-            var server = McpClientConfigUtility.BuildOnDemandServer("bridge.exe", ".", "Unity.exe", 48765, 48766);
-            var result = JObject.Parse(McpClientConfigUtility.UpsertOnDemandJsonConfig(root.ToString(), server, client));
-            Assert.That(result[section]["other"]["url"].Value<string>(), Is.EqualTo("https://other"));
-            Assert.That((object)result[section]["unity"]["url"], Is.Null, result.ToString());
-            Assert.That(result[section]["unity"]["env"]["EXAMPLE"].Value<string>(), Is.EqualTo("value"));
-            Assert.That(result[section]["unity"]["command"], Is.Not.Null);
-        }
-
-        [Test]
         public void UpsertCodexServerConfig_IsIdempotentAndPreservesOtherBlocks()
         {
             const string existing = "[workspace]\ntrusted = true\n\n[mcp_servers.other]\nurl = \"https://example.com/mcp\"\n";

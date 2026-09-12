@@ -10,69 +10,6 @@ namespace LittleBrushGames.Mcp.Editor.Host
     {
         public const string DefaultServerName = "unity";
 
-        public static JObject BuildOnDemandServer(string bridge, string project, string editor, int port, int unityPort)
-            => new JObject
-            {
-                ["command"] = Path.GetFullPath(bridge),
-                ["args"] = new JArray("--stdio", "--project", Path.GetFullPath(project), "--editor", editor,
-                    "--port", port.ToString(), "--unity-port", unityPort.ToString()),
-            };
-
-        public static string UpsertOnDemandCodexConfig(string content, JObject server)
-        {
-            var match = FindCodexBlock(content ?? string.Empty);
-            var block = match.Success ? content.Substring(match.Index, match.Length) : "[mcp_servers.unity]\n";
-            block = RemoveTransportLines(block);
-            block = Regex.Replace(block, @"(?m)^\s*(startup_timeout_sec|tool_timeout_sec)\s*=.*\r?\n?", string.Empty);
-            block = block.TrimEnd() + "\ncommand = " + server["command"].ToString(Formatting.None)
-                + "\nargs = " + server["args"].ToString(Formatting.None)
-                + "\nstartup_timeout_sec = 15\ntool_timeout_sec = 960\n";
-            return match.Success ? content.Substring(0, match.Index) + block + content.Substring(match.Index + match.Length)
-                : (content ?? string.Empty).TrimEnd() + (string.IsNullOrWhiteSpace(content) ? "" : "\n\n") + block;
-        }
-
-        public static string UpsertOnDemandJsonConfig(string content, JObject server, string client)
-        {
-            var root = string.IsNullOrWhiteSpace(content) ? new JObject() : JObject.Parse(content);
-            var sectionName = client == "OpenCode" ? "mcp" : "mcpServers";
-            var section = root[sectionName] as JObject;
-            if (section == null)
-            {
-                section = new JObject();
-                root[sectionName] = section;
-            }
-            var entry = section[DefaultServerName] as JObject ?? new JObject();
-            foreach (var key in new[] { "url", "httpUrl", "type", "command", "args" }) entry.Remove(key);
-            if (client == "OpenCode")
-            {
-                entry["type"] = "local";
-                var command = new JArray(server["command"].DeepClone());
-                foreach (var arg in (JArray)server["args"]) command.Add(arg.DeepClone());
-                entry["command"] = command;
-                entry["enabled"] = true;
-                entry["timeout"] = 960000;
-            }
-            else
-            {
-                entry["command"] = server["command"].DeepClone();
-                entry["args"] = server["args"].DeepClone();
-                if (client == "Claude Code") entry["type"] = "stdio";
-            }
-            section[DefaultServerName] = entry;
-            return root.ToString(Formatting.Indented) + "\n";
-        }
-
-        public static void WriteOnDemandConfig(string client, string path, JObject server)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
-            var existing = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
-            File.WriteAllText(path, client == "Codex" ? UpsertOnDemandCodexConfig(existing, server)
-                : UpsertOnDemandJsonConfig(existing, server, client));
-        }
-
-        private static string RemoveTransportLines(string block)
-            => Regex.Replace(block, @"(?m)^\s*(?:(?:url|command)\s*=.*|args\s*=\s*\[[\s\S]*?\])\r?\n?", string.Empty);
-
         public static string BuildClaudeCodeConfig(int port)
             => UpsertClaudeCodeConfig(string.Empty, port);
 
@@ -118,7 +55,7 @@ namespace LittleBrushGames.Mcp.Editor.Host
                 return trimmed + newline + newline + header + newline + urlLine + newline;
             }
 
-            var block = RemoveTransportLines(existingContent.Substring(match.Index, match.Length));
+            var block = existingContent.Substring(match.Index, match.Length);
             var updatedBlock = UpsertCodexUrlLine(block, header, urlLine, newline);
             return existingContent.Substring(0, match.Index) + updatedBlock + existingContent.Substring(match.Index + match.Length);
         }

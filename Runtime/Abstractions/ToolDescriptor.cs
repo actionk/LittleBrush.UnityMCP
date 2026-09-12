@@ -19,8 +19,6 @@ namespace LittleBrushGames.Mcp
         public ToolAvailability Availability { get; init; } = ToolAvailability.Either;
         public ToolExecution Execution { get; init; } = ToolExecution.Sync;
         public bool RequiresMainThread { get; init; } = true;
-        public bool RequiresGraphics { get; init; }
-        public bool RequiresInteractiveEditor { get; init; }
         /// <summary>Read-only main-thread tools may opt out of the writer lease when
         /// they only observe cached state. Writes always acquire the lease.</summary>
         public bool RequiresWriterLease { get; init; } = true;

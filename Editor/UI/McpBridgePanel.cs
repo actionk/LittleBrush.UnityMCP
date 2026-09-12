@@ -519,7 +519,6 @@ namespace LittleBrushGames.Mcp.Editor.UI
         };
 
         private VisualElement _installGrid;
-        private bool _installOnDemand;
 
         private VisualElement BuildGettingStartedTab()
         {
@@ -538,10 +537,6 @@ namespace LittleBrushGames.Mcp.Editor.UI
             tab.Add(_trustPresetChoice);
 
             tab.Add(SectionHeader("2. Connect an AI client and skills"));
-            var onDemand = new Toggle("Start Unity automatically when a tool needs it");
-            onDemand.tooltip = "Uses a local stdio launcher. Managed batch workers exit after five idle minutes; an already-open Editor stays open. Requires the native bridge executable.";
-            onDemand.RegisterValueChangedCallback(evt => _installOnDemand = evt.newValue);
-            tab.Add(onDemand);
             _installGrid = new VisualElement();
             _installGrid.AddToClassList("install-grid");
             tab.Add(_installGrid);
@@ -755,15 +750,7 @@ namespace LittleBrushGames.Mcp.Editor.UI
 
                     var installBtn = new Button(() =>
                     {
-                        if (_installOnDemand)
-                        {
-                            var bridge = McpBridgeHost.FindBridgeExecutable();
-                            if (bridge == null) throw new InvalidOperationException("Build or install the native MCP bridge first.");
-                            McpClientConfigUtility.WriteOnDemandConfig(t.Name, filePath,
-                                McpClientConfigUtility.BuildOnDemandServer(bridge, ProjectRoot,
-                                    EditorApplication.applicationPath, port, PortResolver.ResolveUnityPort()));
-                        }
-                        else option.InstallAction(filePath, port);
+                        option.InstallAction(filePath, port);
                         Debug.Log($"[MCP] Wrote {filePath}");
                         EditorUtility.DisplayDialog("MCP Install",
                             $"Config written to:\n{filePath}\n\nRestart {option.RestartName} to pick up the server.", "OK");

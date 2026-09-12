@@ -22,7 +22,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner.Tests
             var state = new TestRunProgressState
             {
                 RunId = "view-test", Status = status, Mode = "EditMode", CurrentTest = "Example.Test",
-                StartedAt = 1000, CanCancel = true, Completed = 18,
+                StartedAt = 1000, CanCancel = true, Completed = 18, Total = 42,
             };
             var view = new TestRunProgressView(() => { });
             view.UpdateState(state, 4000);
@@ -31,7 +31,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner.Tests
             Assert.That(view.Q<Button>("cancel").focusable, Is.True);
             Assert.That(view.style.display.value, Is.EqualTo(DisplayStyle.Flex));
             Assert.That(view.Q<Button>("dismiss"), Is.Null);
-            Assert.That(view.Q<Label>("counts").text, Does.Contain("18 completed"));
+            Assert.That(view.Q<Label>("counts").text, Is.EqualTo("18 of 42 completed · 0 failed"));
         }
 
         [TestCase("completed", 0)]

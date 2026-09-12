@@ -1,6 +1,6 @@
 # LittleBrush Unity MCP Bridge
 
-Native proxy that keeps MCP client connections alive across Unity domain reloads, with an optional stdio launcher for on-demand project access.
+Standalone proxy that keeps MCP client connections alive across Unity domain reloads.
 
 ## Build
 
@@ -25,12 +25,13 @@ is independent of checkout location. Record source provenance below instead.
 
 Users do not need Go for the bundled Windows/amd64 bridge.
 
-- Source: the tracked Go files, `gateway.json`, and `go.mod` in this plugin revision
+- Source: working-tree `main.go`, SHA-256 `FAD2EA47D816B3822E4FB43C774551C6F79FF66AEE5F3E4A9F866A252A6C3992` (module definition in `go.mod`)
 - Go: `1.26.2`
 - Build: `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`
+- SHA-256: `29A51A9DEF2DA08AA2DF84C57307D78F735AE818083D45A60F397F017A0B11EB`
 - Authenticode: unsigned
 
-The checksum is stored in [`mcp-bridge.exe.sha256`](mcp-bridge.exe.sha256); CI rebuilds and compares the executable byte for byte.
+The checksum is also stored in [`mcp-bridge.exe.sha256`](mcp-bridge.exe.sha256).
 
 ## Usage
 
@@ -40,16 +41,9 @@ mcp-bridge [options]
 --port          HTTP port for MCP clients (default: 48765)
 --unity-port    TCP port for Unity connection (default: 48766)
 --log           Log level: debug/info/warn/error (default: info)
---stdio         Serve the two MCP gateways over stdio; start Unity only on tool requests
---project       Exact project directory (required with --stdio)
---editor        Optional Editor executable; otherwise resolve the installed ProjectVersion
---idle-timeout  Managed worker idle timeout (default: 5m)
---startup-timeout  Maximum worker startup wait (default: 10m)
 ```
 
 ## Architecture
-
-On-demand setup uses a stdio instance of this same binary in front of the existing HTTP bridge. Process startup is serialized by an OS file lock under the project's `Logs/`; project ownership is checked before connecting. A native bridge left behind by Unity CLI can be reused after its old Editor process exits. The launcher does not replay failed writes or terminate Editors on client disconnect. See [consumer integration](../docs/consumer-integration.md#automatic-startup-and-unity-cli) for setup, permissions, lifecycle, and limitations.
 
 ```text
 [MCP client] --HTTP:48765--> [Bridge] --TCP:48766--> [Unity]

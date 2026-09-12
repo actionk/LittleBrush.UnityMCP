@@ -219,13 +219,7 @@ namespace LittleBrushGames.Mcp.Editor.Transport
             if (!CreateProcess(null, commandLine, IntPtr.Zero, IntPtr.Zero, false, flags, IntPtr.Zero, null, ref si, out var pi))
             {
                 var error = Marshal.GetLastWin32Error();
-                // CLI/job hosts may prohibit breakaway. A child still survives domain reload;
-                // in this fallback its lifetime remains bounded by the parent job.
-                if (error != 5 || !CreateProcess(null, commandLine, IntPtr.Zero, IntPtr.Zero, false,
-                        flags & ~CREATE_BREAKAWAY_FROM_JOB, IntPtr.Zero, null, ref si, out pi))
-                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),
-                        $"Failed to start MCP bridge (initial error {error})");
-                _log.Log(LogLevel.Info, "Started MCP bridge inside the parent job (breakaway unavailable).");
+                throw new System.ComponentModel.Win32Exception(error, $"Failed to start MCP bridge (error {error})");
             }
 
             _bridgeProcessId = pi.dwProcessId;
