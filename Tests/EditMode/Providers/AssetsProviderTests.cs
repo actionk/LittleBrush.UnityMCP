@@ -85,6 +85,53 @@ namespace LittleBrushGames.Mcp.Tests.Providers
         }
 
         [Test]
+        public void ReadAndWrite_SelectSubAssetByLocalId()
+        {
+            CreateProbe();
+            var subAsset = ScriptableObject.CreateInstance<AssetsProviderProbe>();
+            subAsset.name = "Nested Probe";
+            subAsset.nested.number = 11;
+            AssetDatabase.AddObjectToAsset(subAsset, Path);
+            AssetDatabase.SaveAssets();
+            Assert.That(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(subAsset, out _, out long localId), Is.True);
+
+            var read = GetTool("project.assets.read").Handler(Ctx(new JObject
+            {
+                ["path"] = Path,
+                ["localId"] = localId.ToString(),
+                ["propertySearch"] = "nested.number",
+            }), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+            Assert.That((string)read.StructuredContent["localId"], Is.EqualTo(localId.ToString()));
+            Assert.That((string)read.StructuredContent["name"], Is.EqualTo("Nested Probe"));
+            Assert.That((int)read.StructuredContent["properties"]["nested.number"], Is.EqualTo(11));
+
+            GetTool("project.assets.write").Handler(Ctx(new JObject
+            {
+                ["path"] = Path,
+                ["localId"] = localId,
+                ["expectedHash"] = (string)read.StructuredContent["hash"],
+                ["properties"] = new JObject { ["nested.number"] = 17 },
+            }), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+
+            var saved = AssetDatabase.LoadAllAssetsAtPath(Path)
+                .OfType<AssetsProviderProbe>()
+                .Single(asset => asset.name == "Nested Probe");
+            Assert.That(saved.nested.number, Is.EqualTo(17));
+            Assert.That(AssetDatabase.LoadAssetAtPath<AssetsProviderProbe>(Path).nested.number, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Read_RejectsMissingSubAssetLocalId()
+        {
+            CreateProbe();
+            Assert.Throws<McpToolException>(() => GetTool("project.assets.read").Handler(Ctx(new JObject
+            {
+                ["path"] = Path,
+                ["localId"] = long.MaxValue,
+            }), CancellationToken.None).AsTask().GetAwaiter().GetResult());
+        }
+
+        [Test]
         public void Read_ReturnsNestedPropertiesAndHash()
         {
             CreateProbe();

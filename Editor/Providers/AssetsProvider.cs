@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.IO;
 using System.Security.Cryptography;
@@ -22,13 +23,14 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "project.assets.read",
-                Description = "Return asset metadata and an optional filtered page of serialized properties. Properties are omitted unless explicitly requested.",
+                Description = "Return asset or selected sub-asset metadata and an optional filtered page of serialized properties. Pass localId from asset.subassets.list to select a sub-asset. Properties are omitted unless explicitly requested.",
                 Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"",
                     ""required"": [""path""],
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
+                        ""localId"": { ""type"": [""integer"", ""string""], ""description"": ""Optional local file ID from asset.subassets.list. Selects that exact main asset or sub-asset within path."" },
                         ""includeDependencies"": { ""type"": ""boolean"", ""description"": ""Include dependency paths; omitted/false returns only dependencyCount."" },
                         ""dependencyOffset"": { ""type"": ""integer"", ""minimum"": 0 },
                         ""dependencyLimit"": { ""type"": ""integer"", ""minimum"": 1, ""maximum"": 1000, ""description"": ""Dependency page size. Default 25."" },
@@ -60,13 +62,14 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "project.assets.write",
-                Description = "Set serialized properties on an asset with optimistic concurrency. Requires expectedHash from project.assets.read; supports dryRun.",
+                Description = "Set serialized properties on an asset or selected sub-asset with optimistic concurrency. Pass localId from project.assets.read or asset.subassets.list to select a sub-asset. Requires expectedHash from project.assets.read; supports dryRun.",
                 Availability = ToolAvailability.EditMode,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"",
                     ""required"": [""path"", ""expectedHash"", ""properties""],
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
+                        ""localId"": { ""type"": [""integer"", ""string""], ""description"": ""Optional local file ID from project.assets.read or asset.subassets.list. Selects that exact main asset or sub-asset within path."" },
                         ""expectedHash"": { ""type"": ""string"" },
                         ""properties"": { ""type"": ""object"" },
                         ""dryRun"": { ""type"": ""boolean"" }
@@ -196,22 +199,25 @@ namespace LittleBrushGames.Mcp.Editor.Providers
 
         private static ValueTask<ToolResult> Read(ToolContext ctx, CancellationToken __)
         {
-            var path = (string)ctx.Arguments["path"];
+            var path = AssetProvider.NormalizeAssetPath((string)ctx.Arguments["path"]);
             var guid = AssetDatabase.AssetPathToGUID(path);
             if (string.IsNullOrEmpty(guid))
                 throw new McpToolException(McpErrorCodes.NotFound, $"Asset not found: {path}");
 
-            var asset = AssetDatabase.LoadMainAssetAtPath(path);
+            var asset = LoadAssetAtPath(path, ctx.Arguments["localId"]);
             var dependencies = AssetDatabase.GetDependencies(path, false);
             var result = new JObject
             {
                 ["path"] = path,
                 ["guid"] = guid,
-                ["type"] = AssetDatabase.GetMainAssetTypeAtPath(path)?.FullName,
+                ["type"] = asset.GetType().FullName,
+                ["name"] = asset.name,
                 ["labels"] = new JArray(AssetDatabase.GetLabels(asset)),
                 ["dependencyCount"] = dependencies.Length,
                 ["hash"] = AssetDatabase.GetAssetDependencyHash(path).ToString(),
             };
+            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out _, out long localId))
+                result["localId"] = localId.ToString(CultureInfo.InvariantCulture);
             if (ctx.Arguments["includeDependencies"]?.Value<bool>() == true)
             {
                 var dependencyOffset = ctx.Arguments["dependencyOffset"]?.Value<int>() ?? 0;
@@ -259,8 +265,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         private static ValueTask<ToolResult> Write(ToolContext ctx, CancellationToken __)
         {
             var path = AssetProvider.NormalizeAssetPath((string)ctx.Arguments["path"]);
-            var asset = AssetDatabase.LoadMainAssetAtPath(path)
-                ?? throw new McpToolException(McpErrorCodes.NotFound, $"Asset not found: {path}");
+            var asset = LoadAssetAtPath(path, ctx.Arguments["localId"]);
             var expectedHash = (string)ctx.Arguments["expectedHash"];
             var currentHash = AssetDatabase.GetAssetDependencyHash(path).ToString();
             if (!string.Equals(expectedHash, currentHash, StringComparison.Ordinal))
@@ -284,10 +289,30 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             return new ValueTask<ToolResult>(ToolResult.Ok(new JObject
             {
                 ["path"] = path,
+                ["localId"] = AssetDatabase.TryGetGUIDAndLocalFileIdentifier(asset, out _, out long localId)
+                    ? localId.ToString(CultureInfo.InvariantCulture)
+                    : null,
                 ["hash"] = currentHash,
                 ["dryRun"] = dryRun,
                 ["properties"] = changed,
             }));
+        }
+
+        private static UnityEngine.Object LoadAssetAtPath(string path, JToken localIdToken)
+        {
+            if (localIdToken == null || localIdToken.Type == JTokenType.Null)
+                return AssetDatabase.LoadMainAssetAtPath(path)
+                    ?? throw new McpToolException(McpErrorCodes.NotFound, $"Asset not found: {path}");
+
+            if (!long.TryParse(localIdToken.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long localId))
+                throw new McpToolException(McpErrorCodes.InvalidParams, "localId must be a 64-bit integer or decimal string.");
+
+            var asset = AssetDatabase.LoadAllAssetsAtPath(path)
+                .FirstOrDefault(candidate => candidate != null
+                    && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(candidate, out _, out long candidateLocalId)
+                    && candidateLocalId == localId);
+            return asset ?? throw new McpToolException(McpErrorCodes.NotFound,
+                $"Asset localId '{localId}' not found at '{path}'.");
         }
 
         private static ValueTask<ToolResult> Create(ToolContext ctx, CancellationToken __)

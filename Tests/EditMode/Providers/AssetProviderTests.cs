@@ -113,6 +113,7 @@ namespace LittleBrushGames.Mcp.Tests.Providers
                 Assert.That((int)result.StructuredContent["total"], Is.EqualTo(1));
                 Assert.That((string)result.StructuredContent["items"][0]["name"], Is.EqualTo(importedName));
                 var item = result.StructuredContent["items"][0];
+                Assert.That(item["localId"].Type, Is.EqualTo(Newtonsoft.Json.Linq.JTokenType.String));
                 var localId = (long)item["localId"];
                 Assert.That(localId, Is.Not.EqualTo(0));
                 Assert.That((string)result.StructuredContent["guid"], Is.Not.Empty);

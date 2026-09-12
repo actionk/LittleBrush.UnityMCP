@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -526,7 +527,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 ["name"] = asset.name,
                 ["type"] = asset.GetType().FullName,
-                ["localId"] = localId,
+                ["localId"] = localId.ToString(CultureInfo.InvariantCulture),
                 ["isMainAsset"] = AssetDatabase.IsMainAsset(asset),
             };
         }
