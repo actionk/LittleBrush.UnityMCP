@@ -66,7 +66,7 @@ namespace LittleBrushGames.Mcp.Editor.Transport
         private const uint CREATE_BREAKAWAY_FROM_JOB = 0x01000000;
         private const uint CREATE_NO_WINDOW = 0x08000000;
         private const uint DETACHED_PROCESS = 0x00000008;
-        private const string BridgeBufferTimeout = "60s";
+        private const string BridgeBufferTimeout = "180s";
         private const string BridgeRequestTimeout = "360s";
 
         #endregion

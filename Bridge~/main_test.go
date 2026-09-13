@@ -29,8 +29,17 @@ func TestDefaultBridgeTimeoutOutlivesUnityToolTimeout(t *testing.T) {
 }
 
 func TestDefaultBufferTimeoutCoversSlowDomainReload(t *testing.T) {
-	if defaultBufferTimeout < time.Minute {
-		t.Fatalf("default buffer timeout %v is too short for slow Unity domain reloads", defaultBufferTimeout)
+	bridge := queueBridge()
+	bridge.bufferTimeout = defaultBufferTimeout
+	request := &BufferedRequest{ID: "slow-reload", Body: queueBody("editor.status"),
+		RespChan: make(chan json.RawMessage, 1), CreatedAt: time.Now().Add(-169 * time.Second)}
+	bridge.buffered = []*BufferedRequest{request}
+	if removed := bridge.evictAgedBuffered(); removed != 0 {
+		t.Fatalf("request expired during a 169-second domain reload: %d removed", removed)
+	}
+	request.CreatedAt = time.Now().Add(-181 * time.Second)
+	if removed := bridge.evictAgedBuffered(); removed != 1 {
+		t.Fatalf("request must expire after three minutes: %d removed", removed)
 	}
 }
 

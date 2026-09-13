@@ -100,7 +100,7 @@ Bridge queues notifications per initialized session and delivers them through th
 ```
 
 Bridge enters buffering mode:
-- Queues all fresh incoming requests, including mutations (default max 60 seconds)
+- Queues all fresh incoming requests, including mutations (default max 180 seconds)
 - Keeps client connections alive
 - Returns 503 for new requests if queue full
 
@@ -162,7 +162,7 @@ Unity can check this before spawning a new bridge.
     │               └────────┬────────┘               │
     │                        │ Unity disconnects      │
     │   timeout              │ (reload or crash)      │
-    │   (60s)                ▼                        │
+    │   (180s)               ▼                        │
     │               ┌─────────────────┐               │
     └───────────────│   BUFFERING     │───────────────┘
                     └─────────────────┘  Unity reconnects
@@ -173,8 +173,8 @@ Unity can check this before spawning a new bridge.
 | State | Incoming Request | Behavior |
 |-------|------------------|----------|
 | READY | Any | Proxy to Unity |
-| BUFFERING | Any fresh request | Queue (max 100 requests, 60s default timeout) |
-| WAITING_UNITY | Any fresh request | Queue (max 100 requests, 60s default timeout) |
+| BUFFERING | Any fresh request | Queue (max 100 requests, 180s default timeout) |
+| WAITING_UNITY | Any fresh request | Queue (max 100 requests, 180s default timeout) |
 
 Waiting for the first dispatch is not replay. Fresh queued requests are sent without
 `__mcpReplay`; cancelled or expired entries are removed before dispatch. A reload
@@ -222,7 +222,7 @@ Bridge reads config from (in order):
 |---------|-----|-----|---------|
 | Client port | `--port` | `MCP_BRIDGE_PORT` | 48765 |
 | Unity port | `--unity-port` | `MCP_BRIDGE_UNITY_PORT` | 48766 |
-| Buffer timeout | `--buffer-timeout` | `MCP_BRIDGE_BUFFER_TIMEOUT` | 60s |
+| Buffer timeout | `--buffer-timeout` | `MCP_BRIDGE_BUFFER_TIMEOUT` | 180s |
 | Buffer max | `--buffer-max` | `MCP_BRIDGE_BUFFER_MAX` | 100 |
 | Unity wait timeout | `--unity-timeout` | `MCP_BRIDGE_UNITY_TIMEOUT` | 60s |
 | On shutdown | `--on-shutdown` | `MCP_BRIDGE_ON_SHUTDOWN` | exit |

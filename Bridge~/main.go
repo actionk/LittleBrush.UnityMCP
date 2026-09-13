@@ -25,7 +25,7 @@ const (
 	maxSessions           = 64
 	sessionIdleTimeout    = 30 * time.Minute
 	unityWriteTimeout     = 10 * time.Second // Per-write deadline on the Unity socket (avoids HTTP handlers hanging if the TCP send buffer fills).
-	defaultBufferTimeout  = 60 * time.Second // Max time to buffer requests during reload.
+	defaultBufferTimeout  = 3 * time.Minute  // Max time to buffer requests during reload.
 	defaultRequestTimeout = 6 * time.Minute  // Must outlive the five-minute human approval window and Unity's tool timeout.
 )
 

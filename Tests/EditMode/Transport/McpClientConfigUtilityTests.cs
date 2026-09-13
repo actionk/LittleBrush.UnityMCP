@@ -232,7 +232,7 @@ namespace LittleBrushGames.Mcp.Tests.Transport
             var field = typeof(BridgeTransport).GetField("BridgeBufferTimeout", BindingFlags.NonPublic | BindingFlags.Static);
 
             Assert.That(field, Is.Not.Null);
-            Assert.That(field.GetRawConstantValue(), Is.EqualTo("60s"));
+            Assert.That(field.GetRawConstantValue(), Is.EqualTo("180s"));
         }
 
         private static void AssertHttpServer(JToken unity)
