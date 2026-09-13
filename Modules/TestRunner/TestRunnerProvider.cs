@@ -795,7 +795,15 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             }
 
             public void RunStarted(ITestAdaptor testsToRun)
-                => McpTestProgressOverlay.RunStarted(_runId, testsToRun?.TestCaseCount ?? 0);
+                => McpTestProgressOverlay.RunStarted(_runId, CountSelectedTests(testsToRun));
+
+            private static int CountSelectedTests(ITestAdaptor test)
+            {
+                if (test == null) return 0;
+                if (!test.IsSuite && !test.IsTestAssembly) return 1;
+                return test.Children?.Sum(CountSelectedTests) ?? 0;
+            }
+
             public void TestStarted(ITestAdaptor test)
             {
                 if (test != null && !test.IsSuite && !test.IsTestAssembly)
