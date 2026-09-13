@@ -25,10 +25,10 @@ is independent of checkout location. Record source provenance below instead.
 
 Users do not need Go for the bundled Windows/amd64 bridge.
 
-- Source: working-tree `main.go`, SHA-256 `FAD2EA47D816B3822E4FB43C774551C6F79FF66AEE5F3E4A9F866A252A6C3992` (module definition in `go.mod`)
+- Source: working-tree `main.go`, SHA-256 `76600BD69C61FFF703CCED4C0BED67689A880E9D2525BCD98D2CED43EBC54F7E` (module definition in `go.mod`)
 - Go: `1.26.2`
 - Build: `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`
-- SHA-256: `29A51A9DEF2DA08AA2DF84C57307D78F735AE818083D45A60F397F017A0B11EB`
+- SHA-256: `E40F6DA67D1D78B000685E0C3ED24A9230462302D7B2E5E96121DF2313534338`
 - Authenticode: unsigned
 
 The checksum is also stored in [`mcp-bridge.exe.sha256`](mcp-bridge.exe.sha256).
@@ -41,6 +41,7 @@ mcp-bridge [options]
 --port          HTTP port for MCP clients (default: 48765)
 --unity-port    TCP port for Unity connection (default: 48766)
 --log           Log level: debug/info/warn/error (default: info)
+--buffer-timeout Maximum request buffering during Unity reload (default: 3m)
 ```
 
 ## Architecture
