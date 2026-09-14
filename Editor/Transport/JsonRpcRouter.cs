@@ -204,6 +204,8 @@ namespace LittleBrushGames.Mcp.Editor.Transport
                 name = (string)arguments["tool"];
                 arguments = arguments["arguments"] as JObject ?? new JObject();
             }
+            var isReplay = arguments["__mcpReplay"]?.Value<bool>() == true;
+            arguments.Remove("__mcpReplay");
 
             var requestId = RequestKey(scope, id ?? System.Guid.NewGuid().ToString());
             var correlationId = Interlocked.Increment(ref _nextCorrelationId);
@@ -218,26 +220,38 @@ namespace LittleBrushGames.Mcp.Editor.Transport
             _inFlight[requestId] = cts;
             try
             {
+                Func<CancellationToken, Task<DispatchError>> beforeExecute = null;
                 if (name != CatalogToolName
                     && _registry.TryGet(name, out var descriptor)
                     && ((descriptor.RequiresMainThread && descriptor.RequiresWriterLease)
                         || McpTrustPolicy.ResolveCategory(descriptor, arguments) != ToolTrustCategory.Read))
                 {
-                    DispatchError waitError;
-                    var waitWatch = Stopwatch.StartNew();
-                    try { waitError = await AcquireWriterLeaseAsync(writerSession, name, cts.Token); }
-                    finally { writerWaitMs = waitWatch.ElapsedMilliseconds; }
-                    if (waitError != null)
-                        return usageResponse = JsonRpcEnvelope.Error(id, waitError.Code, waitError.Message, waitError.Data);
-                    writerLeaseAcquired = true;
+                    beforeExecute = async token =>
+                    {
+                        DispatchError waitError;
+                        var waitWatch = Stopwatch.StartNew();
+                        try { waitError = await AcquireWriterLeaseAsync(writerSession, name, token); }
+                        catch (OperationCanceledException)
+                        {
+                            return new DispatchError(
+                                McpErrorCodes.ToolUnavailable,
+                                "Request was cancelled before tool dispatch; no tool handler ran. Retry when Unity is ready.",
+                                new JObject { ["executionState"] = "not_started", ["tool"] = name });
+                        }
+                        finally { writerWaitMs = waitWatch.ElapsedMilliseconds; }
+                        writerLeaseAcquired = waitError == null;
+                        dispatchStarted = writerLeaseAcquired;
+                        return waitError;
+                    };
                 }
 
                 var stopwatch = Stopwatch.StartNew();
-                dispatchStarted = true;
+                if (beforeExecute == null)
+                    dispatchStarted = true;
                 var progressToken = parameters["_meta"]?["progressToken"]?.ToString();
                 var result = name == CatalogToolName
                     ? Catalog(arguments)
-                    : await _dispatcher.DispatchAsync(name, arguments, requestId, cts.Token, progressToken);
+                    : await _dispatcher.DispatchAsync(name, arguments, requestId, cts.Token, progressToken, isReplay, beforeExecute);
                 var response = result.Error != null
                     ? JsonRpcEnvelope.Error(id, result.Error.Code, result.Error.Message, result.Error.Data)
                     : JsonRpcEnvelope.Success(id, SerializeToolResult(result.Value));
@@ -505,6 +519,7 @@ namespace LittleBrushGames.Mcp.Editor.Transport
             if (descriptor.OutputSchema != null) result["outputSchema"] = descriptor.OutputSchema;
             if (descriptor.Annotations != null) result["annotations"] = descriptor.Annotations;
             result["requiresMainThread"] = descriptor.RequiresMainThread;
+            result["requiresWriterLease"] = descriptor.RequiresWriterLease;
             result["reloadSafe"] = descriptor.ReloadSafe;
             result["execution"] = descriptor.Execution.ToString();
             var category = McpTrustPolicy.ResolveCategory(descriptor, new JObject());

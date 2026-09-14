@@ -99,7 +99,14 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
             if (error != null) throw new McpToolException(error.Code, error.Message, error.Data);
         }
 
-        public async Task<DispatchResult> DispatchAsync(string name, JObject arguments, string requestId, CancellationToken ct, string progressToken = null)
+        public async Task<DispatchResult> DispatchAsync(
+            string name,
+            JObject arguments,
+            string requestId,
+            CancellationToken ct,
+            string progressToken = null,
+            bool isReplay = false,
+            Func<CancellationToken, Task<DispatchError>> beforeExecute = null)
         {
             if (!_registry.TryGet(name, out var tool))
                 return new DispatchResult(new DispatchError(McpErrorCodes.MethodNotFound, $"Tool '{name}' not found."));
@@ -160,7 +167,8 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
                 _frames,
                 McpRuntimeBridge.Services,
                 _log,
-                requestId);
+                requestId,
+                isReplay);
 
             // Fail fast if the main thread has been stalled (modal dialog, frozen
             // domain reload, focus-loss starvation). Without this check, the tool
@@ -192,6 +200,13 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
             var exclusiveState = 0; // 0 = dispatcher-owned, 1 = handler-owned, 2 = released
             try
             {
+                if (beforeExecute != null)
+                {
+                    var beforeExecuteError = await beforeExecute(timeoutCts.Token);
+                    if (beforeExecuteError != null)
+                        return new DispatchResult(beforeExecuteError);
+                }
+
                 if (tool.ExclusiveGroup != null)
                 {
                     exclusiveLock = _exclusiveLocks.GetOrAdd(tool.ExclusiveGroup, _ => new SemaphoreSlim(1, 1));

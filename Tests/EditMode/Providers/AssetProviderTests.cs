@@ -30,6 +30,23 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             Assert.That(names, Contains.Item("asset.animation_clip.extract"));
         }
 
+        [TestCase("Assets/Scripts/Example.cs")]
+        [TestCase("Assets/Editor/Example.asmdef")]
+        [TestCase("Assets/Plugins/Example.dll")]
+        [TestCase("Packages/manifest.json")]
+        [TestCase("Packages/com.example/package.json")]
+        public void CompilationAssetPaths_AreDetected(string path)
+        {
+            Assert.That(AssetProvider.IsCompilationAssetPath(path), Is.True);
+        }
+
+        [TestCase("Assets/Textures/Icon.png")]
+        [TestCase("Assets/Data/Balance.asset")]
+        public void NonCompilationAssetPaths_RemainPlayModeSafe(string path)
+        {
+            Assert.That(AssetProvider.IsCompilationAssetPath(path), Is.False);
+        }
+
         [Test]
         public void Copy_RejectsPathOutsideAssetsOrPackages()
         {

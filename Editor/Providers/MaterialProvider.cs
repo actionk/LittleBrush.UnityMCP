@@ -40,9 +40,9 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 Name = "material.write",
                 Description = "Set material shader, keywords, renderQueue, and shader properties with expectedHash and dryRun validation.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{
-                    ""type"": ""object"", ""required"": [""path"", ""expectedHash""],
+                    ""type"": ""object"", ""required"": [""path"", ""expectedHash""], ""additionalProperties"": false,
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
                         ""expectedHash"": { ""type"": ""string"" },

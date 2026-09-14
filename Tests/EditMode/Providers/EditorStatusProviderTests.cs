@@ -78,9 +78,13 @@ namespace LittleBrushGames.Mcp.Tests.Providers
 
             var ensureCompiled = sink.Tools.First(t => t.Name == "editor.ensure_compiled");
             var waitReady = sink.Tools.First(t => t.Name == "editor.wait_ready");
+            var refresh = sink.Tools.First(t => t.Name == "editor.refresh");
 
             Assert.That((ensureCompiled.Availability & ToolAvailability.Compiling) != 0, Is.True);
             Assert.That((waitReady.Availability & ToolAvailability.Compiling) != 0, Is.True);
+            Assert.That(waitReady.TrustCategory, Is.EqualTo(ToolTrustCategory.Read));
+            Assert.That(waitReady.RequiresWriterLease, Is.False);
+            Assert.That(refresh.Availability, Is.EqualTo(ToolAvailability.EditMode));
         }
 
         [Test]
@@ -103,6 +107,7 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             var detailed = EditorStatusProvider.CreateToolsListResponse(descriptors,
                 new JObject { ["names"] = new JArray("tests.run"), ["includeMetadata"] = true }, false, false);
             Assert.That((string)detailed["tools"][0]["provider"], Is.EqualTo("TestRunnerProvider"));
+            Assert.That((bool)detailed["tools"][0]["requiresWriterLease"], Is.True);
 
             var paged = EditorStatusProvider.CreateToolsListResponse(descriptors,
                 new JObject { ["limit"] = 1 }, false, false);

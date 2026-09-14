@@ -140,7 +140,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 InputSchema = CompileResultSchema(),
                 Handler = CompileErrors,
             });
-            reg.Register(Tool("editor.refresh", "Force AssetDatabase import to detect external file changes. Prefer editor.ensure_compiled when you also need compile errors.", Refresh, reloadSafe: true));
+            reg.Register(Tool("editor.refresh", "Force AssetDatabase import to detect external file changes. Prefer editor.ensure_compiled when you also need compile errors.", Refresh, ToolAvailability.EditMode, reloadSafe: true));
             reg.Register(new ToolDescriptor
             {
                 Name = "editor.ensure_compiled",
@@ -170,6 +170,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Execution = ToolExecution.Async,
                 Timeout = TimeSpan.FromMinutes(3),
                 ReloadSafe = true,
+                RequiresWriterLease = false,
+                TrustCategory = ToolTrustCategory.Read,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"",
                     ""properties"": {
@@ -258,6 +260,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     item["assembly"] = tool.ProviderAssemblyName;
                     item["availability"] = tool.Availability.ToString();
                     item["requiresMainThread"] = tool.RequiresMainThread;
+                    item["requiresWriterLease"] = tool.RequiresWriterLease;
                     item["reloadSafe"] = tool.ReloadSafe;
                     var category = McpTrustPolicy.ResolveCategory(tool, new JObject());
                     item["trustCategory"] = category.ToString();
@@ -475,7 +478,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         {
             var force = ctx.Arguments["force"]?.Value<bool>() == true;
             var playSessionToken = ctx.Arguments.Value<string>("playSessionToken");
-            var replayed = ctx.Arguments.Value<bool?>("__mcpReplay") == true;
+            var replayed = ctx.IsReplay;
             var envelope = await EnsureCompiledCore(ctx, force, playSessionToken, ct, replayed);
             return ToolResult.Ok(ProjectCompileMessages(envelope, ctx.Arguments));
         }

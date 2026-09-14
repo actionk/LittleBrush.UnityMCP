@@ -66,6 +66,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"",
+                    ""additionalProperties"": false,
                     ""required"": [""path"", ""expectedHash"", ""properties""],
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
@@ -85,6 +86,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Availability = ToolAvailability.EditMode,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"",
+                    ""additionalProperties"": false,
                     ""required"": [""path"", ""type""],
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
@@ -100,7 +102,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 Name = "project.importer.read",
                 Description = "Read a filtered page of serialized AssetImporter properties.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = PropertyReadSchema(),
                 Handler = ReadImporter,
             });
@@ -111,7 +113,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Description = "Set one AssetImporter with expectedHash concurrency and dryRun validation; then reimport once. Use project.importer.write_many for multiple assets.",
                 Availability = ToolAvailability.EditMode,
                 InputSchema = JObject.Parse(@"{
-                    ""type"": ""object"", ""required"": [""path"", ""expectedHash"", ""properties""],
+                    ""type"": ""object"", ""required"": [""path"", ""expectedHash"", ""properties""], ""additionalProperties"": false,
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
                         ""expectedHash"": { ""type"": ""string"" },
@@ -151,7 +153,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 Name = "project.settings.list",
                 Description = "Page serialized Unity ProjectSettings assets (tags/layers, physics, graphics, quality, navigation, and more).",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""properties"": { ""includeHashes"": { ""type"": ""boolean"", ""description"": ""Include per-file concurrency hashes; omitted/false keeps discovery compact."" }, ""offset"": { ""type"": ""integer"", ""minimum"": 0 }, ""limit"": { ""type"": ""integer"", ""minimum"": 1, ""maximum"": 1000, ""description"": ""Page size. Default 25."" } } }"),
                 Handler = ListProjectSettings,
                 Annotations = new JObject { ["readOnlyHint"] = true },
@@ -160,7 +162,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 Name = "project.settings.read",
                 Description = "Read a filtered page of serialized properties and a concurrency hash from one ProjectSettings asset.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = PropertyReadSchema(),
                 Handler = ReadProjectSettings,
                 Annotations = new JObject { ["readOnlyHint"] = true },
@@ -171,7 +173,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Description = "Set serialized ProjectSettings properties with expectedHash and dryRun validation.",
                 Availability = ToolAvailability.EditMode,
                 InputSchema = JObject.Parse(@"{
-                    ""type"": ""object"", ""required"": [""path"", ""expectedHash"", ""properties""],
+                    ""type"": ""object"", ""required"": [""path"", ""expectedHash"", ""properties""], ""additionalProperties"": false,
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
                         ""expectedHash"": { ""type"": ""string"" },

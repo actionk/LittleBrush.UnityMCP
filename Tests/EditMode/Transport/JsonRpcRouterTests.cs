@@ -258,6 +258,7 @@ namespace LittleBrushGames.Mcp.Tests.Transport
             Assert.That((string)tool["name"], Is.EqualTo("probe.required"));
             Assert.That((string)tool["playMode"], Is.EqualTo("required"));
             Assert.That((string)tool["inputSchema"]["type"], Is.EqualTo("object"));
+            Assert.That((bool)tool["requiresWriterLease"], Is.True);
         }
 
         [Test]
@@ -310,6 +311,35 @@ namespace LittleBrushGames.Mcp.Tests.Transport
 
             var invalid = await _router.HandleAsync(JObject.Parse(@"{ ""jsonrpc"": ""2.0"", ""id"": 8, ""method"": ""tools/call"", ""params"": { ""name"": ""unity.call"", ""arguments"": { ""tool"": ""probe.required"", ""arguments"": {} } } }"), CancellationToken.None);
             Assert.That((int)invalid["error"]["code"], Is.EqualTo(McpErrorCodes.ValidationFailed));
+        }
+
+        [Test]
+        public async Task GatewayCall_ConsumesReplayMarkerBeforeStrictSchemaValidation()
+        {
+            var registry = new ToolRegistry();
+            registry.SetEditorProviders(new IToolProvider[]
+            {
+                new InlineProvider(
+                    "probe.replay",
+                    (ctx, _) => new ValueTask<ToolResult>(ToolResult.Ok(new JObject
+                    {
+                        ["isReplay"] = ctx.IsReplay,
+                        ["markerVisible"] = ctx.Arguments["__mcpReplay"] != null,
+                    })),
+                    inputSchema: JObject.Parse(@"{ ""type"": ""object"", ""additionalProperties"": false }"),
+                    reloadSafe: true),
+            });
+            var dispatcher = new ToolDispatcher(registry, new FakeMainThreadPump(), new FakeFrameWaiter(),
+                new FakeLogSink(), () => (false, false));
+            var router = new JsonRpcRouter(registry, dispatcher, () => (false, false));
+
+            var response = await router.HandleAsync(
+                JObject.Parse(@"{ ""jsonrpc"": ""2.0"", ""id"": 9, ""method"": ""tools/call"", ""params"": { ""name"": ""probe.replay"", ""arguments"": { ""__mcpReplay"": true } } }"),
+                CancellationToken.None);
+
+            Assert.That(response["error"], Is.Null);
+            Assert.That((bool)response["result"]["structuredContent"]["isReplay"], Is.True);
+            Assert.That((bool)response["result"]["structuredContent"]["markerVisible"], Is.False);
         }
 
         [Test]

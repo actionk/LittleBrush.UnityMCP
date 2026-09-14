@@ -45,6 +45,8 @@ public sealed class HelloProvider : IToolProvider
 | `Availability` | Flags: `EditMode` / `PlayMode` / `Either`. `unity.tools` reports live availability and the dispatcher enforces it on every call. |
 | `Execution` | `Sync` (default), `Async`, or `LongRunning`. Affects timeout and cancellation defaults. |
 | `RequiresMainThread` | Defaults to `true`. The dispatcher hops to the main thread before invoking the handler. |
+| `RequiresWriterLease` | Defaults to `true`. Set `false` only for read-only tools that can safely observe cached or stable state without reserving the cross-client writer. Reported by `unity.tools`. |
+| `ReloadSafe` | Allows the bridge to replay an interrupted call after domain reload only when the handler is idempotent or concurrency-keyed. Replay state is exposed as `ToolContext.IsReplay`, not as a public schema property. |
 | `Handler` | `async ValueTask<ToolResult>` with cancellation token. Throw `McpToolException(code, message, data?)` for expected failures. |
 
 ## Error handling

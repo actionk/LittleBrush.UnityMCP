@@ -18,6 +18,8 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             Assert.That(names, Contains.Item("build.player_settings.write"));
             Assert.That(names, Contains.Item("build.start"));
             Assert.That(names, Contains.Item("build.result"));
+            Assert.That(sink.Tools.Single(tool => tool.Name == "build.settings").Availability, Is.EqualTo(ToolAvailability.Either));
+            Assert.That(sink.Tools.Single(tool => tool.Name == "build.player_settings.read").Availability, Is.EqualTo(ToolAvailability.Either));
         }
 
         private sealed class CollectingSink : IToolRegistration

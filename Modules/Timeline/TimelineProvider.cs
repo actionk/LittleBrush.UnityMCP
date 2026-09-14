@@ -29,7 +29,7 @@ namespace LittleBrushGames.Mcp.Modules.Timeline
             {
                 Name = "timeline.read",
                 Description = "Read a Timeline asset as paged normalized tracks and clips with asset-local IDs and an optimistic hash. Track and per-track clip pages default to 25.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"", ""required"": [""path""], ""additionalProperties"": false,
                     ""properties"": {

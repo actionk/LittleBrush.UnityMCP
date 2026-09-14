@@ -297,6 +297,9 @@ namespace LittleBrushGames.Mcp.Modules.Timeline.Tests
                 "timeline.read", "timeline.write", "timeline.binding.write",
                 "asset.animation_clip.curves.read", "asset.animation_clip.curves.write",
             }));
+            Assert.That(Tool(new TimelineProvider(), "timeline.read").Availability, Is.EqualTo(ToolAvailability.Either));
+            Assert.That(Tool(new AnimationClipCurveProvider(), "asset.animation_clip.curves.read").Availability, Is.EqualTo(ToolAvailability.Either));
+            Assert.That(Tool(new AnimationClipCurveProvider(), "asset.animation_clip.curves.write").Availability, Is.EqualTo(ToolAvailability.Either));
         }
 
         private static ToolDescriptor Tool(IToolProvider provider, string name) => Collect(provider).Single(tool => tool.Name == name);

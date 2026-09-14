@@ -30,7 +30,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 Name = "build.settings",
                 Description = "Read active build target and enabled build scenes.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = new JObject { ["type"] = "object" },
                 Handler = Settings,
                 Annotations = new JObject { ["readOnlyHint"] = true },
@@ -39,7 +39,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 Name = "build.player_settings.read",
                 Description = "Read common PlayerSettings values with a concurrency hash.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = new JObject { ["type"] = "object" },
                 Handler = ReadPlayerSettings,
                 Annotations = new JObject { ["readOnlyHint"] = true },

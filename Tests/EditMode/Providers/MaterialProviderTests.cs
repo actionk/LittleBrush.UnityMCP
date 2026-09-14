@@ -21,6 +21,8 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             Assert.That(names, Contains.Item("material.read"));
             Assert.That(names, Contains.Item("material.write"));
             Assert.That(names, Contains.Item("shader.inspect"));
+            Assert.That(sink.Tools.Single(tool => tool.Name == "material.write").Availability, Is.EqualTo(ToolAvailability.Either));
+            Assert.That(sink.Tools.Single(tool => tool.Name == "material.write").InputSchema["additionalProperties"]?.Value<bool>(), Is.False);
         }
 
         [Test]

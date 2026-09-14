@@ -77,7 +77,7 @@ Unity responds:
 
 The `id` field correlates request/response. The `payload` is the raw MCP JSON-RPC message, passed through unmodified.
 
-The public MCP surface advertises `unity.tools` and `unity.call`. For bridge replay and test-run policy, the bridge resolves `unity.call.arguments.tool` as the effective tool name and applies replay markers to its nested `arguments` object. Unity derives `reloadSafeTools` from registered tool descriptors on every handshake; this is the authoritative replay policy. Before Unity supplies that policy, only `initialize`, `ping`, and `tools/list` are replay-safe.
+The public MCP surface advertises `unity.tools` and `unity.call`. For bridge replay and test-run policy, the bridge resolves `unity.call.arguments.tool` as the effective tool name and applies an internal replay marker to its nested `arguments` object. The Unity router consumes that marker before public schema validation and exposes it to handlers as `ToolContext.IsReplay`. Unity derives `reloadSafeTools` from registered tool descriptors on every handshake; this is the authoritative replay policy. Before Unity supplies that policy, only `initialize`, `ping`, and `tools/list` are replay-safe.
 
 Successful JSON-only tool calls return the value once in `structuredContent` with an empty required `content` array. The server does not duplicate structured JSON as text. Text, image, and resource-link tools populate `content`; tool errors keep a concise text message and may include structured diagnostics.
 
@@ -181,7 +181,8 @@ Waiting for the first dispatch is not replay. Fresh queued requests are sent wit
 lifecycle event pauses dispatch even before the old socket closes.
 
 Only requests already dispatched without a confirmed response require replay safety.
-Those explicitly marked reload-safe may be retried with `__mcpReplay`; otherwise
+Those explicitly marked reload-safe may be retried with the internal `__mcpReplay`
+transport marker, which is removed before tool schema validation; otherwise
 the bridge returns `REPLAY_REJECTED` with `executionState: "unknown"`. Check the
 operation's result before manually retrying a mutation with an unknown outcome.
 

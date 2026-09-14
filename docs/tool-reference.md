@@ -10,12 +10,12 @@ Source inventory of 104 registry tools, plus the two MCP gateway tools. Optional
 | Tool | Purpose |
 | --- | --- |
 | [`asset.animation_clip.extract`](../Editor/Providers/AssetProvider.cs) | Copy an imported AnimationClip sub-asset (for example from an FBX) into a standalone project-owned .anim asset. |
-| [`asset.copy`](../Editor/Providers/AssetProvider.cs) | Copy an asset via AssetDatabase.CopyAsset. Safer than Instantiate+SaveAsPrefabAsset — does not touch the scene. |
+| [`asset.copy`](../Editor/Providers/AssetProvider.cs) | Copy an asset via AssetDatabase.CopyAsset. Safer than Instantiate+SaveAsPrefabAsset — does not touch the scene. Compilation inputs require Edit Mode. |
 | [`asset.create_folder`](../Editor/Providers/AssetProvider.cs) | Create a folder under Assets/ or Packages/ if it does not already exist. Idempotent. |
-| [`asset.delete`](../Editor/Providers/AssetProvider.cs) | Delete one or more assets. Returns paths that were deleted and those that did not exist. |
+| [`asset.delete`](../Editor/Providers/AssetProvider.cs) | Delete one or more assets. Returns paths that were deleted and those that did not exist. Compilation inputs require Edit Mode. |
 | [`asset.find`](../Editor/Providers/AssetProvider.cs) | Find assets by type, optional folder scope, and optional label. Returns path + guid + type. Paginated via cursor. Preferred over execute_code+AssetDatabase.FindAssets. |
-| [`asset.import`](../Editor/Providers/AssetProvider.cs) | Reimport one or more assets in a single StartAssetEditing/StopAssetEditing envelope so the cost is amortised. |
-| [`asset.move`](../Editor/Providers/AssetProvider.cs) | Move or rename an asset via AssetDatabase.MoveAsset. |
+| [`asset.import`](../Editor/Providers/AssetProvider.cs) | Reimport one or more assets in a single StartAssetEditing/StopAssetEditing envelope so the cost is amortised. Compilation inputs require Edit Mode. |
+| [`asset.move`](../Editor/Providers/AssetProvider.cs) | Move or rename an asset via AssetDatabase.MoveAsset. Compilation inputs require Edit Mode. |
 | [`asset.subassets.list`](../Editor/Providers/AssetProvider.cs) | Page the main asset and imported sub-assets at a path. Use localId with the source path for exact follow-up operations. |
 | [`build.player_settings.read`](../Editor/Providers/BuildProvider.cs) | Read common PlayerSettings values with a concurrency hash. |
 | [`build.player_settings.write`](../Editor/Providers/BuildProvider.cs) | Write common PlayerSettings values with expectedHash and dryRun validation. |

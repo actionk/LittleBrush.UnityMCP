@@ -20,6 +20,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
     [McpToolProvider]
     public sealed class AssetProvider : IToolProvider
     {
+        private static readonly HashSet<string> CompilationExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".asmdef", ".asmref", ".cs", ".dll", ".rsp",
+        };
+
         public string Namespace => "asset";
 
         public void RegisterTools(IToolRegistration reg)
@@ -56,7 +61,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""properties"": {
                         ""parent"": { ""type"": ""string"", ""description"": ""Project-relative parent folder (e.g. 'Assets/Content')."" },
                         ""name"": { ""type"": ""string"", ""description"": ""New folder name."" }
-                    }
+                    },
+                    ""additionalProperties"": false
                 }"),
                 Handler = CreateFolder,
             });
@@ -64,7 +70,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "asset.copy",
-                Description = "Copy an asset via AssetDatabase.CopyAsset. Safer than Instantiate+SaveAsPrefabAsset — does not touch the scene.",
+                Description = "Copy an asset via AssetDatabase.CopyAsset. Safer than Instantiate+SaveAsPrefabAsset — does not touch the scene. Compilation inputs require Edit Mode.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Sync,
                 InputSchema = JObject.Parse(@"{
@@ -74,7 +80,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                         ""src"": { ""type"": ""string"" },
                         ""dest"": { ""type"": ""string"" },
                         ""overwrite"": { ""type"": ""boolean"", ""description"": ""If true and dest exists, replace it after copying to a temporary path. Default false."" }
-                    }
+                    },
+                    ""additionalProperties"": false
                 }"),
                 Handler = Copy,
             });
@@ -82,7 +89,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "asset.move",
-                Description = "Move or rename an asset via AssetDatabase.MoveAsset.",
+                Description = "Move or rename an asset via AssetDatabase.MoveAsset. Compilation inputs require Edit Mode.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Sync,
                 InputSchema = JObject.Parse(@"{
@@ -91,7 +98,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""properties"": {
                         ""src"": { ""type"": ""string"" },
                         ""dest"": { ""type"": ""string"" }
-                    }
+                    },
+                    ""additionalProperties"": false
                 }"),
                 Handler = Move,
             });
@@ -99,7 +107,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "asset.delete",
-                Description = "Delete one or more assets. Returns paths that were deleted and those that did not exist.",
+                Description = "Delete one or more assets. Returns paths that were deleted and those that did not exist. Compilation inputs require Edit Mode.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Sync,
                 InputSchema = JObject.Parse(@"{
@@ -107,7 +115,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""required"": [""paths""],
                     ""properties"": {
                         ""paths"": { ""type"": ""array"", ""minItems"": 1, ""maxItems"": 256, ""items"": { ""type"": ""string"" } }
-                    }
+                    },
+                    ""additionalProperties"": false
                 }"),
                 Handler = Delete,
             });
@@ -115,7 +124,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "asset.import",
-                Description = "Reimport one or more assets in a single StartAssetEditing/StopAssetEditing envelope so the cost is amortised.",
+                Description = "Reimport one or more assets in a single StartAssetEditing/StopAssetEditing envelope so the cost is amortised. Compilation inputs require Edit Mode.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Sync,
                 InputSchema = JObject.Parse(@"{
@@ -124,7 +133,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""properties"": {
                         ""paths"": { ""type"": ""array"", ""minItems"": 1, ""maxItems"": 256, ""items"": { ""type"": ""string"" } },
                         ""force"": { ""type"": ""boolean"", ""description"": ""If true, uses ImportAssetOptions.ForceUpdate."" }
-                    }
+                    },
+                    ""additionalProperties"": false
                 }"),
                 Handler = Import,
             });
@@ -265,6 +275,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         {
             var src = NormalizeAssetPath(RequireString(ctx, "src"));
             var dest = NormalizeAssetPath(RequireString(ctx, "dest"));
+            EnsurePlayModeSafeAssetMutation(src, dest);
             var overwrite = ctx.Arguments["overwrite"]?.Value<bool>() == true;
 
             if (string.Equals(src, dest, StringComparison.Ordinal))
@@ -310,6 +321,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         {
             var src = NormalizeAssetPath(RequireString(ctx, "src"));
             var dest = NormalizeAssetPath(RequireString(ctx, "dest"));
+            EnsurePlayModeSafeAssetMutation(src, dest);
 
             if (!AssetExists(src))
                 throw new McpToolException(McpErrorCodes.NotFound, $"src does not exist: '{src}'.");
@@ -330,15 +342,16 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         {
             var arr = ctx.Arguments["paths"] as JArray
                 ?? throw new McpToolException(McpErrorCodes.ValidationFailed, "paths: non-empty array required.");
+            var paths = arr.Select(token => NormalizeAssetPath((string)token)).ToArray();
+            EnsurePlayModeSafeAssetMutation(paths);
             var deleted = new JArray();
             var missing = new JArray();
 
             AssetDatabase.StartAssetEditing();
             try
             {
-                foreach (var t in arr)
+                foreach (var p in paths)
                 {
-                    var p = NormalizeAssetPath((string)t);
                     if (!AssetExists(p)) { missing.Add(p); continue; }
                     if (AssetDatabase.DeleteAsset(p)) deleted.Add(p);
                     else missing.Add(p);
@@ -359,6 +372,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 ?? throw new McpToolException(McpErrorCodes.ValidationFailed, "paths: non-empty array required.");
             var force = ctx.Arguments["force"]?.Value<bool>() == true;
             var options = force ? ImportAssetOptions.ForceUpdate : ImportAssetOptions.Default;
+            var paths = arr.Select(token => NormalizeAssetPath((string)token)).ToArray();
+            EnsurePlayModeSafeAssetMutation(paths);
 
             var reimported = new JArray();
             var missing = new JArray();
@@ -366,9 +381,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             AssetDatabase.StartAssetEditing();
             try
             {
-                foreach (var t in arr)
+                foreach (var p in paths)
                 {
-                    var p = NormalizeAssetPath((string)t);
                     if (!AssetExists(p)) { missing.Add(p); continue; }
                     AssetDatabase.ImportAsset(p, options);
                     reimported.Add(p);
@@ -381,6 +395,49 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 ["reimported"] = reimported,
                 ["missing"] = missing,
             }));
+        }
+
+        internal static bool IsCompilationAssetPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+            if (CompilationExtensions.Contains(Path.GetExtension(path)))
+                return true;
+            if (!path.StartsWith("Packages/", StringComparison.OrdinalIgnoreCase))
+                return false;
+            var fileName = Path.GetFileName(path);
+            return fileName.Equals("manifest.json", StringComparison.OrdinalIgnoreCase)
+                || fileName.Equals("packages-lock.json", StringComparison.OrdinalIgnoreCase)
+                || fileName.Equals("package.json", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void EnsurePlayModeSafeAssetMutation(params string[] paths)
+        {
+            if (!EditorApplication.isPlaying && !EditorApplication.isPlayingOrWillChangePlaymode)
+                return;
+
+            foreach (var path in paths)
+            {
+                var blockedPath = IsCompilationAssetPath(path)
+                    ? path
+                    : AssetDatabase.IsValidFolder(path)
+                        ? AssetDatabase.FindAssets(string.Empty, new[] { path })
+                            .Select(AssetDatabase.GUIDToAssetPath)
+                            .FirstOrDefault(IsCompilationAssetPath)
+                        : null;
+                if (blockedPath == null)
+                    continue;
+
+                throw new McpToolException(
+                    McpErrorCodes.ToolUnavailable,
+                    $"Asset operation cannot change compilation inputs during Play Mode: '{blockedPath}'.",
+                    new JObject
+                    {
+                        ["blockedPath"] = blockedPath,
+                        ["requiredMode"] = "EditMode",
+                        ["hint"] = "Stop user-owned Play Mode through editor.request_stop_play_mode, then retry.",
+                    });
+            }
         }
 
         private static ValueTask<ToolResult> ListSubAssets(ToolContext ctx, CancellationToken ct)

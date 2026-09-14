@@ -26,9 +26,9 @@ namespace LittleBrushGames.Mcp.Modules.Timeline
             {
                 Name = "asset.animation_clip.curves.read",
                 Description = "Read paged float and object-reference curves from a selected AnimationClip, including imported clip sub-assets. Key detail defaults to 25 keys for one binding.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{
-                    ""type"": ""object"", ""required"": [""path""],
+                    ""type"": ""object"", ""required"": [""path""], ""additionalProperties"": false,
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
                         ""clipName"": { ""type"": ""string"" },
@@ -48,10 +48,10 @@ namespace LittleBrushGames.Mcp.Modules.Timeline
             {
                 Name = "asset.animation_clip.curves.write",
                 Description = "Atomically set or remove float curves on a standalone .anim asset. Requires expectedHash and supports dryRun.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 ExclusiveGroup = "animation-curve-write",
                 InputSchema = JObject.Parse(@"{
-                    ""type"": ""object"", ""required"": [""path"", ""expectedHash"", ""operations""],
+                    ""type"": ""object"", ""required"": [""path"", ""expectedHash"", ""operations""], ""additionalProperties"": false,
                     ""properties"": {
                         ""path"": { ""type"": ""string"" },
                         ""expectedHash"": { ""type"": ""string"" },

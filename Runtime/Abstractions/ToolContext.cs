@@ -12,6 +12,7 @@ namespace LittleBrushGames.Mcp
         public IServiceProvider RuntimeServices { get; }
         public ILogSink Logger { get; }
         public string RequestId { get; }
+        public bool IsReplay { get; }
 
         public ToolContext(
             JObject arguments,
@@ -20,7 +21,8 @@ namespace LittleBrushGames.Mcp
             IFrameWaiter frames,
             IServiceProvider runtimeServices,
             ILogSink logger,
-            string requestId)
+            string requestId,
+            bool isReplay = false)
         {
             Arguments = arguments;
             Progress = progress;
@@ -29,6 +31,7 @@ namespace LittleBrushGames.Mcp
             RuntimeServices = runtimeServices;
             Logger = logger;
             RequestId = requestId;
+            IsReplay = isReplay;
         }
     }
 }

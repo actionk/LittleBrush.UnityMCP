@@ -38,10 +38,21 @@ namespace LittleBrushGames.Mcp.Tests.Dispatch
         {
             RegisterTool("probe.edit", ToolAvailability.EditMode, (_, _) => throw new Exception("Must not execute"));
             var authorizer = new TransitionProbeAuthorizer();
+            var beforeExecuteInvoked = false;
             var dispatcher = new ToolDispatcher(_registry, new FakeMainThreadPump(), new FakeFrameWaiter(), new FakeLogSink(), () => (true, false), authorizer: authorizer);
-            var result = await dispatcher.DispatchAsync("probe.edit", new JObject(), "mode-check", CancellationToken.None);
+            var result = await dispatcher.DispatchAsync(
+                "probe.edit",
+                new JObject(),
+                "mode-check",
+                CancellationToken.None,
+                beforeExecute: _ =>
+                {
+                    beforeExecuteInvoked = true;
+                    return Task.FromResult<DispatchError>(null);
+                });
             Assert.That(result.Error.Code, Is.EqualTo(McpErrorCodes.ToolUnavailable));
             Assert.That(authorizer.Calls, Is.Zero);
+            Assert.That(beforeExecuteInvoked, Is.False);
         }
 
         private sealed class TransitionProbeAuthorizer : IToolAuthorizer
@@ -159,6 +170,7 @@ namespace LittleBrushGames.Mcp.Tests.Dispatch
         public async Task Dispatch_AuthorizationFailure_PreventsHandlerExecution()
         {
             var invoked = false;
+            var beforeExecuteInvoked = false;
             RegisterTool("test.protected", ToolAvailability.Either, (_, _) =>
             {
                 invoked = true;
@@ -173,10 +185,19 @@ namespace LittleBrushGames.Mcp.Tests.Dispatch
                 authorizer: new RejectingAuthorizer());
 
             var result = await _dispatcher.DispatchAsync(
-                "test.protected", new JObject(), "req-auth", CancellationToken.None);
+                "test.protected",
+                new JObject(),
+                "req-auth",
+                CancellationToken.None,
+                beforeExecute: _ =>
+                {
+                    beforeExecuteInvoked = true;
+                    return Task.FromResult<DispatchError>(null);
+                });
 
             Assert.That(result.Error.Code, Is.EqualTo(McpErrorCodes.ToolUnavailable));
             Assert.That(invoked, Is.False);
+            Assert.That(beforeExecuteInvoked, Is.False);
         }
 
         [Test]

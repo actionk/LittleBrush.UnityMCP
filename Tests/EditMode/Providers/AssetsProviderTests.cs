@@ -62,6 +62,10 @@ namespace LittleBrushGames.Mcp.Tests.Providers
         public void RegisterTools_AllowsSerializedAssetWritesInPlayMode()
         {
             Assert.That(GetTool("project.assets.write").Availability, Is.EqualTo(ToolAvailability.Either));
+            Assert.That(GetTool("project.importer.read").Availability, Is.EqualTo(ToolAvailability.Either));
+            Assert.That(GetTool("project.settings.list").Availability, Is.EqualTo(ToolAvailability.Either));
+            Assert.That(GetTool("project.settings.read").Availability, Is.EqualTo(ToolAvailability.Either));
+            Assert.That(GetTool("project.assets.write").InputSchema["additionalProperties"]?.Value<bool>(), Is.False);
         }
 
         [Test]
