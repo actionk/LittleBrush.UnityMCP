@@ -59,6 +59,12 @@ namespace LittleBrushGames.Mcp.Tests.Providers
         }
 
         [Test]
+        public void RegisterTools_AllowsSerializedAssetWritesInPlayMode()
+        {
+            Assert.That(GetTool("project.assets.write").Availability, Is.EqualTo(ToolAvailability.Either));
+        }
+
+        [Test]
         public void NormalizeProjectSettingsPath_RejectsTraversal()
         {
             Assert.Throws<McpToolException>(() => AssetsProvider.NormalizeProjectSettingsPath("ProjectSettings/../Assets/x.asset"));

@@ -63,7 +63,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 Name = "project.assets.write",
                 Description = "Set serialized properties on an asset or selected sub-asset with optimistic concurrency. Pass localId from project.assets.read or asset.subassets.list to select a sub-asset. Requires expectedHash from project.assets.read; supports dryRun.",
-                Availability = ToolAvailability.EditMode,
+                Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"",
                     ""required"": [""path"", ""expectedHash"", ""properties""],
