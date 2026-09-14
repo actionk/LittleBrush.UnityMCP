@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using LittleBrushGames.Mcp.Editor;
 using LittleBrushGames.Mcp.Editor.Host;
 using LittleBrushGames.Mcp.Editor.Dispatch;
+using LittleBrushGames.Mcp.Editor.Providers;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -75,7 +76,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             var testsRun = new ToolDescriptor
             {
                 Name = "tests.run",
-                Description = "Run tests matching an optional filter under the Tests trust policy. Dirty saved scenes are saved under the UnsavedWork policy; untitled scenes remain blocked. EditMode tests run in a temporary empty scene. Supply a unique runId (32 lowercase hex characters) before dispatch so a lost launch response can be recovered with tests.result. Otherwise use tests.runs to recover the generated ID. Never blindly repeat an unknown launch.",
+                Description = "Run tests matching an optional filter under the Tests trust policy. Stopping user-owned Play Mode separately follows UserPlayModeStop. Dirty saved scenes are saved under the UnsavedWork policy; untitled scenes remain blocked. EditMode tests run in a temporary empty scene. Supply a unique runId (32 lowercase hex characters) before dispatch so a lost launch response can be recovered with tests.result. Otherwise use tests.runs to recover the generated ID. Never blindly repeat an unknown launch.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.LongRunning,
                 RequiresMainThread = true,
@@ -315,7 +316,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             if (!EditorApplication.isPlaying && !EditorApplication.isPlayingOrWillChangePlaymode) return;
             await McpTrustPolicy.AuthorizeOnMainThreadAsync(
                 ctx,
-                ToolTrustCategory.EditorState,
+                ResolvePlayModeStopTrustCategory(McpPlayModeOwnership.IsOwnedCached),
                 "AI requests to stop Play Mode for tests",
                 "Unity TestRunner must begin from Edit Mode.",
                 ctx.Arguments.Value<string>("reason") ?? "Run the requested Unity tests.",
@@ -327,6 +328,9 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 TimeSpan.FromSeconds(30),
                 ct);
         }
+
+        internal static ToolTrustCategory ResolvePlayModeStopTrustCategory(bool mcpOwned)
+            => mcpOwned ? ToolTrustCategory.EditorState : ToolTrustCategory.UserPlayModeStop;
 
         private static async ValueTask<JArray> PrepareScenesForTestRun(ToolContext ctx, CancellationToken ct)
         {

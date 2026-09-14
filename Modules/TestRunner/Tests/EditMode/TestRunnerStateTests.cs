@@ -385,6 +385,15 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner.Tests
             Assert.That(run.Description, Does.Contain("temporary empty scene"));
         }
 
+        [TestCase(false, ToolTrustCategory.UserPlayModeStop)]
+        [TestCase(true, ToolTrustCategory.EditorState)]
+        public void TestsRun_UsesOwnershipAwarePlayModeStopTrust(
+            bool mcpOwned,
+            ToolTrustCategory expected)
+        {
+            Assert.That(TestRunnerProvider.ResolvePlayModeStopTrustCategory(mcpOwned), Is.EqualTo(expected));
+        }
+
         [TestCase("cancelling", null, "cancelled")]
         [TestCase("restoring", "Original startup failure", "failed")]
         public void LateFinish_PreservesCancellationAndStartupFailure(string status, string message, string terminal)

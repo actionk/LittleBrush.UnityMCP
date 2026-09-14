@@ -69,7 +69,7 @@ Read-only means the fallback does not dirty or save objects, write/import/delete
 - Imported sub-assets: resolve the local ID with `asset.subassets.list`; pass its copy-ready `reference` into serialized assignments. Extract FBX clips with `asset.animation_clip.extract`.
 - Timeline: use `timeline.read` and hash-checked `timeline.write`. Read curves from imported or standalone clips; write curves only to standalone `.anim` assets.
 - Serialized ID migrations: preview `scene.replace_id` or `prefab.replace_id` with `dryRun: true, save: false`, inspect match counts and bounded results, then repeat for the same explicit asset with `dryRun: false, save: true`. For an unloaded scene, use the `assetHash` returned by the preview as `expectedHash` on the write.
-- Tests: run the narrowest relevant Edit Mode assembly, class, or names and poll the result. `tests.run` follows `Tests`; stopping MCP-owned Play Mode follows `EditorState`; dirty saved scenes follow `UnsavedWork`. User-owned Play Mode is never stopped implicitly. It refuses untitled scenes until the user chooses a path; do not invent one.
+- Tests: run the narrowest relevant Edit Mode assembly, class, or names and poll the result. `tests.run` follows `Tests`; stopping MCP-owned Play Mode follows `EditorState`, stopping user-owned Play Mode separately follows `UserPlayModeStop`, and dirty saved scenes follow `UnsavedWork`. It refuses untitled scenes until the user chooses a path; do not invent one.
 - Runtime inspection: discover installed runtime providers through the registry. Treat results as diagnostics and author durable state through source, content, prefabs, or scenes.
 - Builds: do not run player or Addressables builds unless the user explicitly requested that build.
 
