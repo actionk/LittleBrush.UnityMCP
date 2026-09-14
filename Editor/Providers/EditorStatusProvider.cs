@@ -113,7 +113,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "editor.request_stop_play_mode",
-                Description = "Request stopping user-owned Play Mode under the local EditorState trust policy.",
+                Description = "Request stopping user-owned Play Mode under the local UserPlayModeStop trust policy.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Async,
                 Timeout = TimeSpan.FromMinutes(5) + TimeSpan.FromSeconds(10),

@@ -36,7 +36,7 @@ Source inventory of 104 registry tools, plus the two MCP gateway tools. Optional
 | [`editor.pause`](../Editor/Providers/EditorStatusProvider.cs) | Pause the editor. |
 | [`editor.play`](../Editor/Providers/EditorStatusProvider.cs) | Enter Play Mode under the local EditorState trust policy. Returns a playSessionToken; only that token can stop the MCP-started session. |
 | [`editor.refresh`](../Editor/Providers/EditorStatusProvider.cs) | Force AssetDatabase import to detect external file changes. Prefer editor.ensure_compiled when you also need compile errors. |
-| [`editor.request_stop_play_mode`](../Editor/Providers/EditorStatusProvider.cs) | Request stopping user-owned Play Mode under the local EditorState trust policy. |
+| [`editor.request_stop_play_mode`](../Editor/Providers/EditorStatusProvider.cs) | Request stopping user-owned Play Mode under the separate local UserPlayModeStop trust policy. |
 | [`editor.resume`](../Editor/Providers/EditorStatusProvider.cs) | Resume the editor. |
 | [`editor.screenshot`](../Editor/Providers/ScreenshotProvider.cs) | Capture a screenshot of the SceneView (edit/play) or GameView (play mode). Returns inline PNG via ImageContent. Args: { source?: 'SceneView'\|'GameView', width?: int, height?: int }. |
 | [`editor.selection.read`](../Editor/Providers/EditorInspectionProvider.cs) | Read a bounded page of selected object identities without changing selection or focus. |

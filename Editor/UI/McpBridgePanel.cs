@@ -645,6 +645,7 @@ namespace LittleBrushGames.Mcp.Editor.UI
         {
             ToolTrustCategory.ProjectWrite => "Project changes",
             ToolTrustCategory.EditorState => "Editor state",
+            ToolTrustCategory.UserPlayModeStop => "Stop user-started Play Mode",
             ToolTrustCategory.UnsavedWork => "Unsaved work",
             ToolTrustCategory.CodeExecution => "Execute Code",
             _ => category.ToString(),
@@ -654,7 +655,8 @@ namespace LittleBrushGames.Mcp.Editor.UI
         {
             ToolTrustCategory.Read => "Inspect project, Editor, tools, logs, status, previews, and results without changing them.",
             ToolTrustCategory.ProjectWrite => "Create or edit normal project assets and settings using the owning typed tools.",
-            ToolTrustCategory.EditorState => "Enter or stop Play Mode, pause/resume, or switch the loaded scene set.",
+            ToolTrustCategory.EditorState => "Enter or stop MCP-owned Play Mode, pause/resume, or switch the loaded scene set.",
+            ToolTrustCategory.UserPlayModeStop => "Allow MCP to stop Play Mode that you started. MCP-started sessions remain controlled by Editor state.",
             ToolTrustCategory.UnsavedWork => "Replace, close, or run operations that can affect dirty scenes or other unsaved Editor work.",
             ToolTrustCategory.Destructive => "Delete, remove, overwrite, move, or perform another explicitly destructive replacement.",
             ToolTrustCategory.Tests => "Start or cancel Unity test runs. Reading existing results remains a read action.",

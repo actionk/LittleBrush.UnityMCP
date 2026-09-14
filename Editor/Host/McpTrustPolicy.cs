@@ -185,9 +185,10 @@ namespace LittleBrushGames.Mcp.Editor.Host
             if (tool.Name == "tests.cancel") return ToolTrustCategory.Tests;
             if (tool.Name == "build.start" || tool.Name == "addressables.build") return ToolTrustCategory.Builds;
             if (tool.Name == "editor.execute_code") return ToolTrustCategory.CodeExecution;
+            if (tool.Name == "editor.request_stop_play_mode" || tool.Name == "editor.auto_stop_for_tool")
+                return ToolTrustCategory.UserPlayModeStop;
             if (tool.Name == "editor.play"
                 || tool.Name == "editor.stop"
-                || tool.Name == "editor.request_stop_play_mode"
                 || tool.Name == "editor.pause"
                 || tool.Name == "editor.resume"
                 || tool.Name == "scene.request_open")

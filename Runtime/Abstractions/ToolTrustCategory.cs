@@ -11,5 +11,6 @@ namespace LittleBrushGames.Mcp
         Tests = 6,
         Builds = 7,
         CodeExecution = 8,
+        UserPlayModeStop = 9,
     }
 }
