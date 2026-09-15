@@ -3,6 +3,7 @@ using LittleBrushGames.Mcp.Editor.UI;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
 
 namespace LittleBrushGames.Mcp.Tests.Dispatch
 {
@@ -114,6 +115,34 @@ namespace LittleBrushGames.Mcp.Tests.Dispatch
             Assert.That(request.Grant, Is.EqualTo(McpPermissionGrant.AllowOnce));
         }
 
+        [Test]
+        public void PermissionPrompt_DoesNotChangeFocusedWindow()
+        {
+            var target = ScriptableObject.CreateInstance<FocusTargetWindow>();
+            McpPermissionRequest request = null;
+            target.ShowUtility();
+            target.Focus();
+
+            try
+            {
+                request = McpPermissionRequestPrompt.ShowRequest(
+                    "title", "details", "reason", System.TimeSpan.FromMinutes(1));
+
+                Assert.That(EditorWindow.focusedWindow, Is.SameAs(target));
+                Assert.That(McpPermissionRequestPrompt.Current, Is.SameAs(request));
+                Assert.That(McpPermissionRequestPrompt.ResolveCurrent(McpPermissionGrant.AllowOnce), Is.True);
+                Assert.That(request.Grant, Is.EqualTo(McpPermissionGrant.AllowOnce));
+                Assert.That(McpPermissionRequestPrompt.Current, Is.Null);
+                Assert.That(EditorWindow.focusedWindow, Is.SameAs(target));
+            }
+            finally
+            {
+                McpPermissionRequestPrompt.Cancel(request);
+                McpPermissionRequestPrompt.ResolveCurrent(McpPermissionGrant.Deny);
+                target.Close();
+            }
+        }
+
         [TestCase("editor.auto_stop_for_tool", true)]
         [TestCase("editor.request_stop_play_mode", true)]
         [TestCase("editor.play", false)]
@@ -151,6 +180,10 @@ namespace LittleBrushGames.Mcp.Tests.Dispatch
                 if (hadCurrent) EditorPrefs.SetInt(currentKey, currentValue);
                 else EditorPrefs.DeleteKey(currentKey);
             }
+        }
+
+        private sealed class FocusTargetWindow : EditorWindow
+        {
         }
     }
 }

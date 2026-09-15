@@ -28,6 +28,11 @@ namespace LittleBrushGames.Mcp.Editor.UI
         private static McpBridgePanel s_instance;
         private static bool s_gettingStartedRequested;
         private Label _statusPill;
+        private VisualElement _permissionCard;
+        private Label _permissionTitle;
+        private Label _permissionDetails;
+        private Label _permissionReason;
+        private Label _permissionCountdown;
         private VisualElement _statusTab;
         private VisualElement _trustTab;
         private VisualElement _settingsTab;
@@ -93,6 +98,9 @@ namespace LittleBrushGames.Mcp.Editor.UI
             tabBar.Add(_statusPill);
             root.Add(tabBar);
 
+            _permissionCard = BuildPermissionCard();
+            root.Add(_permissionCard);
+
             // Tabs
             var scroll = new ScrollView(ScrollViewMode.Vertical);
             scroll.style.flexGrow = 1;
@@ -131,6 +139,65 @@ namespace LittleBrushGames.Mcp.Editor.UI
             btn.AddToClassList("tab-btn");
             _tabButtons.Add(btn);
             return btn;
+        }
+
+        private VisualElement BuildPermissionCard()
+        {
+            var card = new VisualElement();
+            card.AddToClassList("permission-card");
+            card.AddToClassList("hidden");
+
+            _permissionTitle = new Label();
+            _permissionTitle.AddToClassList("permission-title");
+            card.Add(_permissionTitle);
+
+            _permissionDetails = new Label();
+            _permissionDetails.AddToClassList("permission-details");
+            card.Add(_permissionDetails);
+
+            _permissionReason = new Label();
+            _permissionReason.AddToClassList("permission-reason");
+            card.Add(_permissionReason);
+
+            _permissionCountdown = new Label();
+            _permissionCountdown.AddToClassList("permission-countdown");
+            card.Add(_permissionCountdown);
+
+            var actions = new VisualElement();
+            actions.AddToClassList("action-row");
+            var allow = new Button(() => ResolvePermission(McpPermissionGrant.AllowOnce)) { text = "Allow Once" };
+            allow.AddToClassList("btn-primary");
+            actions.Add(allow);
+            var session = new Button(() => ResolvePermission(McpPermissionGrant.AllowForSession)) { text = "Session" };
+            session.AddToClassList("btn-secondary");
+            actions.Add(session);
+            var always = new Button(() => ResolvePermission(McpPermissionGrant.AlwaysAllow)) { text = "Always" };
+            always.AddToClassList("btn-secondary");
+            actions.Add(always);
+            var deny = new Button(() => ResolvePermission(McpPermissionGrant.Deny)) { text = "Deny" };
+            deny.AddToClassList("btn-secondary");
+            actions.Add(deny);
+            card.Add(actions);
+            return card;
+        }
+
+        private void ResolvePermission(McpPermissionGrant grant)
+        {
+            McpPermissionRequestPrompt.ResolveCurrent(grant);
+            _lastRefresh = -1;
+            RefreshLive();
+        }
+
+        private void RefreshPermission(McpPermissionRequest request)
+        {
+            _permissionCard.EnableInClassList("hidden", request == null);
+            if (request == null) return;
+
+            _permissionTitle.text = request.Title;
+            _permissionDetails.text = request.Details;
+            _permissionReason.text = $"Reason: {request.Reason}";
+            var remaining = Math.Max(0, Math.Ceiling((request.DeadlineUtc - DateTime.UtcNow).TotalSeconds));
+            _permissionCountdown.text = $"Expires in {remaining:0}s";
         }
 
         private void ShowTab(int idx)
@@ -352,7 +419,7 @@ namespace LittleBrushGames.Mcp.Editor.UI
 
             _trustContainer.Add(SectionHeader("Category rules"));
             var decisions = new Label(
-                "Deny blocks the action. Ask pauses and lets you allow it once, for this Unity session, or always. " +
+                "Deny blocks the action. Ask posts a non-interrupting status item; open this panel to allow it once, for this Unity session, or always. " +
                 "Allow runs an explicitly requested action without an extra trust prompt. Hard validation and safety checks still apply.");
             decisions.AddToClassList("settings-hint");
             _trustContainer.Add(decisions);
@@ -884,9 +951,12 @@ namespace LittleBrushGames.Mcp.Editor.UI
             if (_statusPill == null) return;
 
             var running = McpBridgeHost.IsRunning;
-            _statusPill.text = running ? "Running" : "Stopped";
-            _statusPill.EnableInClassList("running", running);
-            _statusPill.EnableInClassList("stopped", !running);
+            var request = McpPermissionRequestPrompt.Current;
+            _statusPill.text = request != null ? "Approval pending" : running ? "Running" : "Stopped";
+            _statusPill.EnableInClassList("pending", request != null);
+            _statusPill.EnableInClassList("running", request == null && running);
+            _statusPill.EnableInClassList("stopped", request == null && !running);
+            RefreshPermission(request);
 
             if (_activeTab != 1 || _portValue == null) return;
             _portValue.text = McpBridgeHost.Port.ToString();

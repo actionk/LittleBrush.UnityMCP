@@ -259,24 +259,24 @@ namespace LittleBrushGames.Mcp.Editor.Host
                     $"Action is not allowed by the local {category} trust policy.",
                     new JObject { ["trustCategory"] = category.ToString(), ["reason"] = "denied_by_policy" });
 
-            var request = McpPermissionRequestWindow.ShowRequest(
-                title, details, reason, TimeSpan.FromSeconds(McpPermissionRequestWindow.DefaultTimeoutSeconds), isStillValid);
+            var request = McpPermissionRequestPrompt.ShowRequest(
+                title, details, reason, TimeSpan.FromSeconds(McpPermissionRequestPrompt.DefaultTimeoutSeconds), isStillValid);
             try
             {
                 await ctx.Frames.WaitUntilAsync(
                     () => request.IsCompleted,
-                    TimeSpan.FromSeconds(McpPermissionRequestWindow.DefaultTimeoutSeconds + 5), ct);
+                    TimeSpan.FromSeconds(McpPermissionRequestPrompt.DefaultTimeoutSeconds + 5), ct);
             }
             catch (TimeoutException)
             {
-                McpPermissionRequestWindow.Cancel(request);
+                McpPermissionRequestPrompt.Cancel(request);
                 throw new McpToolException(McpErrorCodes.ToolUnavailable,
                     $"The {category} permission request timed out.",
                     new JObject { ["trustCategory"] = category.ToString(), ["reason"] = "timeout" });
             }
             catch
             {
-                McpPermissionRequestWindow.Cancel(request);
+                McpPermissionRequestPrompt.Cancel(request);
                 throw;
             }
 
@@ -395,11 +395,11 @@ namespace LittleBrushGames.Mcp.Editor.Host
             McpPermissionRequest request = null;
             await _mainThread.RunAsync(_ =>
             {
-                request = McpPermissionRequestWindow.ShowRequest(
+                request = McpPermissionRequestPrompt.ShowRequest(
                     $"AI requests {category}",
                     tool.Name,
                     arguments.Value<string>("reason") ?? tool.Description,
-                    TimeSpan.FromSeconds(McpPermissionRequestWindow.DefaultTimeoutSeconds),
+                    TimeSpan.FromSeconds(McpPermissionRequestPrompt.DefaultTimeoutSeconds),
                     IsPlayModeStopRequest(tool.Name)
                         ? () => EditorApplication.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode
                         : null);
@@ -410,17 +410,17 @@ namespace LittleBrushGames.Mcp.Editor.Host
             {
                 await _frames.WaitUntilAsync(
                     () => request.IsCompleted,
-                    TimeSpan.FromSeconds(McpPermissionRequestWindow.DefaultTimeoutSeconds + 5),
+                    TimeSpan.FromSeconds(McpPermissionRequestPrompt.DefaultTimeoutSeconds + 5),
                     ct);
             }
             catch (TimeoutException)
             {
-                McpPermissionRequestWindow.Cancel(request);
+                McpPermissionRequestPrompt.Cancel(request);
                 throw Denied(tool, category, "timeout");
             }
             catch
             {
-                McpPermissionRequestWindow.Cancel(request);
+                McpPermissionRequestPrompt.Cancel(request);
                 throw;
             }
 

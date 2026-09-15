@@ -66,6 +66,39 @@
     color: rgb(248, 81, 73);
 }
 
+.status-pill.pending {
+    background-color: rgba(255, 184, 56, 0.16);
+    color: rgb(255, 184, 56);
+}
+
+.permission-card {
+    margin: 8px 12px 0;
+    padding: 10px 12px;
+    background-color: rgba(255, 184, 56, 0.08);
+    border-left-width: 3px;
+    border-color: rgba(255, 184, 56, 0.55);
+    border-radius: 5px;
+}
+
+.permission-title {
+    -unity-font-style: bold;
+    font-size: 14px;
+    color: rgb(255, 210, 120);
+}
+
+.permission-details,
+.permission-reason {
+    margin-top: 4px;
+    white-space: normal;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.permission-countdown {
+    margin-top: 5px;
+    -unity-font-style: bold;
+    color: rgb(255, 184, 56);
+}
+
 /* ─── Tab Content ────────────────────────────────────────────────────────── */
 
 .tab-content {
@@ -708,6 +741,9 @@
 .light-theme .trust-preset-description, .light-theme .trust-category-description,
 .light-theme .trust-category-source, .light-theme .test-history-timing { color: rgb(80, 85, 90); }
 .light-theme .btn-secondary, .light-theme .tab-btn { color: rgb(45, 50, 55); }
+.light-theme .permission-card { background-color: rgba(180, 105, 0, 0.08); border-color: rgba(180, 105, 0, 0.55); }
+.light-theme .permission-title, .light-theme .permission-countdown { color: rgb(145, 82, 0); }
+.light-theme .permission-details, .light-theme .permission-reason { color: rgb(55, 58, 62); }
 
 .mcp-root .btn-primary, .mcp-root .btn-secondary { min-height: 24px; padding: 3px 10px; }
 .mcp-root .tab-content > Button { align-self: flex-start; }
