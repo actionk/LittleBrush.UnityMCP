@@ -44,6 +44,7 @@ Read-only means the fallback does not dirty or save objects, write/import/delete
 
 ## Interaction budget
 
+- Follow [Non-disruptive automation](../../docs/provider-authoring.md#non-disruptive-automation) when choosing or developing tools: retain agent capability while preserving the user's workspace. Prefer direct data/render APIs; open UI only when the task needs that UI.
 - One task owns Unity writes at a time. Parallel tasks sharing an Editor remain source-only until the
   writer finishes its coherent batch.
 - Honor the live trust decision and writer lease. Editor focus alone is not evidence that an

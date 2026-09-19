@@ -2,6 +2,16 @@
 
 A tool provider is any class that implements `LittleBrushGames.Mcp.IToolProvider`. Editor providers additionally carry the `[McpToolProvider]` attribute so the plugin's discovery scan instantiates them on editor load.
 
+## Non-disruptive automation
+
+Give agents the capabilities needed to complete their work while minimizing disruption to the user. Keep operations callable independently of their editor UI; opening a window must not be a prerequisite for inspecting, generating, editing, or rendering data when the operation itself does not require that UI.
+
+- Default to background operations that preserve the user's windows, focus, selection, camera framing, loaded scenes, and Play Mode. Make intentional presentation or navigation an explicit operation or opt-in, and describe its effects in the tool descriptor.
+- Return images directly from isolated renderers for visual output checks. Reuse the same generation and rendering code as the human-facing tool, with explicit inputs and deterministic camera controls. Inspect an actual window only when its UI or current interactive state is the subject of the task.
+- Keep expensive generation responsive through staged work and cancellation. Dispose temporary scenes, cameras, textures, and other owned resources on success, failure, and cancellation; do not save preview assets or prepare materials implicitly.
+- Tests of data or rendering should use the underlying APIs. Show a window only for behavior that genuinely requires a displayed UI, and close only the window created by that test in guaranteed cleanup.
+- Verify both the result and preservation of user-owned Editor state. Quiet operation must not reduce capability, hide failures, or bypass trust and consent rules.
+
 ## Minimal example
 
 ```csharp
