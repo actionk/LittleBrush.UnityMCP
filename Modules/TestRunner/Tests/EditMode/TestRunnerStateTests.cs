@@ -170,7 +170,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner.Tests
             Assert.That((string)response["status"], Is.EqualTo("started"));
             Assert.That((string)response["mode"], Is.EqualTo("EditMode"));
             Assert.That((string)response["message"], Does.Contain("Poll tests.result"));
-            Assert.That((int)response["pollAfterMs"], Is.EqualTo(500));
+            Assert.That((int)response["pollAfterMs"], Is.EqualTo(1000));
         }
 
         [Test]
@@ -239,6 +239,24 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner.Tests
             var compact = TestRunnerProvider.CreateListResponse(entries, new JObject(), new JObject());
             Assert.That((string)compact["detail"], Is.EqualTo("names"));
             Assert.That(compact["tests"][0].Type, Is.EqualTo(JTokenType.String));
+        }
+
+        [Test]
+        public void UnchangedResultValidatesQueryAndOmitsProjectionUntilRevisionChanges()
+        {
+            var state = TestRunnerProvider.CreateRunningState("run", "EditMode");
+            ((JArray)state["tests"]).Add(new JObject { ["fullName"] = "Fail", ["status"] = "Failed", ["output"] = new string('x', 20000) });
+            var same = TestRunnerProvider.CreateResultResponse(state, "all", 0, 10, 2000, "v1", "v1");
+            Assert.That((bool)same["unchanged"], Is.True);
+            Assert.That(same["tests"], Is.Null);
+            Assert.That(same["completedCount"], Is.Null);
+            Assert.That((int)same["pollAfterMs"], Is.EqualTo(2000));
+            Assert.Throws<McpToolException>(() => TestRunnerProvider.CreateResultResponse(state, "all", -1, 10, 2000, "v1", "v1"));
+            state["status"] = "completed";
+            var changed = TestRunnerProvider.CreateResultResponse(state, "auto", 0, 10, 2000, "v2", "v1");
+            Assert.That((string)changed["tests"][0]["fullName"], Is.EqualTo("Fail"));
+            Assert.That(changed["pollAfterMs"], Is.Null);
+            Assert.That((string)changed["revision"], Is.EqualTo("v2"));
         }
 
         [Test]

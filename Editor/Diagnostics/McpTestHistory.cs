@@ -34,10 +34,25 @@ namespace LittleBrushGames.Mcp.Editor.Diagnostics
             var tests = state["tests"] as JArray ?? new JArray();
             if (tests.Count > MaxTestsPerRun) throw new IOException("Test history supports at most 10,000 cases per run; this run was not archived.");
             var run = new JObject();
-            foreach (var key in new[] { "runId", "mode", "status", "startedAt", "finishedAt", "durationSec", "passCount", "failCount" })
+            foreach (var key in new[] { "runId", "mode", "status", "startedAt", "finishedAt", "durationSec", "passCount", "failCount",
+                         "handlerStartedAt", "runnerStartedAt", "testsFinishedAt", "frameworkIdleAt", "restoreStartedAt" })
                 run[key] = state[key]?.DeepClone();
             run["unityVersion"] = unityVersion;
             run["wallDurationSec"] = Math.Max(0, ((long?)state["finishedAt"] - (long?)state["startedAt"] ?? 0) / 1000.0);
+            var phases = new JObject();
+            AddPhase("preparation", "handlerStartedAt", "startedAt");
+            AddPhase("runnerStartup", "startedAt", "runnerStartedAt");
+            AddPhase("runner", "runnerStartedAt", "testsFinishedAt");
+            AddPhase("frameworkCleanup", "testsFinishedAt", "frameworkIdleAt");
+            AddPhase("restore", "restoreStartedAt", "finishedAt");
+            if (phases.Count > 0) run["phaseDurationsMs"] = phases;
+            if (state["handlerStartedAt"]?.Type == JTokenType.Integer && state["finishedAt"]?.Type == JTokenType.Integer)
+                run["handlerDurationSec"] = Math.Max(0, ((long)state["finishedAt"] - (long)state["handlerStartedAt"]) / 1000.0);
+            void AddPhase(string name, string start, string end)
+            {
+                if (state[start]?.Type == JTokenType.Integer && state[end]?.Type == JTokenType.Integer)
+                    phases[name] = Math.Max(0, (long)state[end] - (long)state[start]);
+            }
             run["tests"] = new JArray(tests.Select(t => new JObject
             {
                 ["fullName"] = t["fullName"]?.DeepClone(), ["status"] = t["status"]?.DeepClone(),

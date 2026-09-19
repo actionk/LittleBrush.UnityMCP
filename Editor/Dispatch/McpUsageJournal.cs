@@ -95,11 +95,35 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
                 entry["totalDispatchMs"] = ((long?)entry["totalDispatchMs"] ?? 0) + dispatchMs;
                 if (error?["code"]?.Type == JTokenType.Integer)
                 {
-                    var codes = entry["errorCodes"] as JObject ?? new JObject();
-                    entry["errorCodes"] = codes;
+                    var codes = entry["errorCodes"] as JObject;
+                    if (codes == null) entry["errorCodes"] = codes = new JObject();
                     var code = error["code"].ToString();
                     if (codes[code] == null && codes.Count >= 32) code = "other";
                     codes[code] = ((long?)codes[code] ?? 0) + 1;
+                }
+                // Bounded metadata only: distinguish RPC failures from handler/validation outcomes.
+                var category = response == null ? "interrupted" : error != null ? "rpc_error"
+                    : structured?["timeout"]?.Value<bool>() == true ? "timeout"
+                    : name == "editor.ensure_compiled" && (int?)structured?["errorCount"] > 0 ? "compile_errors"
+                    : name == "tests.result" && (int?)structured?["failCount"] > 0 ? "test_failures"
+                    : failed ? "result_failed" : "ok";
+                Increment(entry, "outcomes", category);
+                if (_statistics["errorCodeCountingFixedUtc"] == null) _statistics["errorCodeCountingFixedUtc"] = now;
+                if (name == "editor.ensure_compiled" && structured != null)
+                {
+                    var source = (string)structured["source"];
+                    Increment(entry, "compileSources", source is "cached" or "replayed_cached" or "fresh"
+                        or "timeout_inflight" or "timeout_refresh" or "timeout_inputs_changed" ? source : "other");
+                    if (structured["timingsMs"] is JObject timings)
+                    {
+                        entry["compileTimingCalls"] = ((long?)entry["compileTimingCalls"] ?? 0) + 1;
+                        var totals = entry["compileTimingsMs"] as JObject;
+                        if (totals == null) entry["compileTimingsMs"] = totals = new JObject();
+                        foreach (var phase in new[] { "fingerprint", "refresh", "wait", "editMode" })
+                            totals[phase] = ((long?)totals[phase] ?? 0) + Math.Max(0, (long?)timings[phase] ?? 0);
+                        entry["compileRequests"] = ((long?)entry["compileRequests"] ?? 0) + ((int?)structured["compileRequests"] ?? 0);
+                        entry["refreshRequests"] = ((long?)entry["refreshRequests"] ?? 0) + ((int?)structured["refreshRequests"] ?? 0);
+                    }
                 }
                 _statistics["updatedUtc"] = now;
                 _version++;
@@ -119,6 +143,13 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
                 while (executions.Count > _executionRetention) executions.RemoveAt(0);
                 _executionVersion++;
             }
+        }
+
+        private static void Increment(JObject entry, string field, string key)
+        {
+            var counts = entry[field] as JObject;
+            if (counts == null) entry[field] = counts = new JObject();
+            counts[key] = ((long?)counts[key] ?? 0) + 1;
         }
 
         public void Flush()

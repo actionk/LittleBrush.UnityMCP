@@ -269,6 +269,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
 
         private static async ValueTask<ToolResult> RunTests(ToolContext ctx, CancellationToken ct)
         {
+            var handlerStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var runId = ResolveRunId(ctx.Arguments);
             EnsureNoActiveTestRun();
 
@@ -293,8 +294,8 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             var api = UnityEngine.ScriptableObject.CreateInstance<TestRunnerApi>();
 
             var result = isPlayMode
-                ? await RunPlayModeTests(api, filter, runId, ctx.Arguments)
-                : await RunEditModeTests(api, filter, runId, ctx.Arguments);
+                ? await RunPlayModeTests(api, filter, runId, ctx.Arguments, handlerStartedAt)
+                : await RunEditModeTests(api, filter, runId, ctx.Arguments, handlerStartedAt);
 
             if (autoSavedScenes.Count > 0)
                 result.StructuredContent["autoSavedScenes"] = autoSavedScenes;
@@ -378,11 +379,12 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             return new JArray();
         }
 
-        private static ValueTask<ToolResult> RunEditModeTests(TestRunnerApi api, Filter filter, string runId, JObject arguments)
+        private static ValueTask<ToolResult> RunEditModeTests(TestRunnerApi api, Filter filter, string runId, JObject arguments, long handlerStartedAt)
         {
 
             SessionState.SetString(SceneSnapshotKeyPrefix + runId, CaptureScenes(includeViews: true).ToString());
             var state = CreateRunningState(runId, TestMode.EditMode.ToString());
+            state["handlerStartedAt"] = handlerStartedAt;
             SessionState.SetString(SessionKeyPrefix + runId, state.ToString());
             RecordRun(state, arguments);
             AddActiveRunId(runId);
@@ -416,7 +418,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             return new ValueTask<ToolResult>(ToolResult.Ok(response));
         }
 
-        private static ValueTask<ToolResult> RunPlayModeTests(TestRunnerApi api, Filter filter, string runId, JObject arguments)
+        private static ValueTask<ToolResult> RunPlayModeTests(TestRunnerApi api, Filter filter, string runId, JObject arguments, long handlerStartedAt)
         {
 
             // Snapshot the open scene set BEFORE Play Mode begins — Unity swaps in
@@ -427,6 +429,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
 
             // Store initial state in SessionState (survives domain reload)
             var state = CreateRunningState(runId, TestMode.PlayMode.ToString());
+            state["handlerStartedAt"] = handlerStartedAt;
             SessionState.SetString(SessionKeyPrefix + runId, state.ToString());
             RecordRun(state, arguments);
             AddActiveRunId(runId);
@@ -506,7 +509,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 ["status"] = "started",
                 ["mode"] = mode,
                 ["message"] = $"{mode} test run started. Poll tests.result with this runId.",
-                ["pollAfterMs"] = 500,
+                ["pollAfterMs"] = 1000,
             };
         }
 
@@ -526,11 +529,9 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             var offset = ctx.Arguments["offset"]?.Value<int>() ?? 0;
             var limit = ctx.Arguments["limit"]?.Value<int>() ?? 10;
             var maxTextCharacters = ctx.Arguments["maxTextCharacters"]?.Value<int>() ?? 2000;
-            var projected = CreateResultResponse(state, detail, offset, limit, maxTextCharacters);
             var revision = UnityEngine.Hash128.Compute(json).ToString();
-            if ((string)ctx.Arguments["afterRevision"] == revision)
-                return new ValueTask<ToolResult>(ToolResult.Ok(new JObject { ["runId"] = runId, ["status"] = state["status"], ["revision"] = revision, ["unchanged"] = true }));
-            projected["revision"] = revision;
+            var projected = CreateResultResponse(state, detail, offset, limit, maxTextCharacters,
+                revision, (string)ctx.Arguments["afterRevision"]);
             return new ValueTask<ToolResult>(ToolResult.Ok(projected));
         }
 
@@ -539,7 +540,9 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             string detail,
             int offset,
             int limit,
-            int maxTextCharacters = 2000)
+            int maxTextCharacters = 2000,
+            string revision = null,
+            string afterRevision = null)
         {
             if (detail is not ("auto" or "summary" or "failures" or "diagnostics" or "all"))
                 throw new McpToolException(McpErrorCodes.InvalidParams,
@@ -551,9 +554,16 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 throw new McpToolException(McpErrorCodes.InvalidParams,
                     "maxTextCharacters must be between 256 and 20000.");
 
-            var tests = state["tests"] as JArray ?? new JArray();
             var status = (string)state["status"] ?? "unknown";
             var running = status is "running" or "cancelling" or "restoring";
+            if (revision != null && afterRevision == revision)
+            {
+                var unchanged = new JObject { ["runId"] = state["runId"], ["status"] = status,
+                    ["revision"] = revision, ["unchanged"] = true };
+                if (running) unchanged["pollAfterMs"] = status is "restoring" or "cancelling" ? 500 : 2000;
+                return unchanged;
+            }
+            var tests = state["tests"] as JArray ?? new JArray();
             var result = new JObject
             {
                 ["runId"] = state["runId"],
@@ -566,9 +576,11 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 ["skipCount"] = state["skipCount"] ?? CountStatus(tests, "Skipped"),
                 ["inconclusiveCount"] = state["inconclusiveCount"] ?? CountStatus(tests, "Inconclusive"),
             };
-            CopyIfPresent(state, result, "finishedAt", "assertCount", "durationSec", "overallStatus", "message", "consoleSuppression", "sceneRestoreError", "sceneSnapshot", "testsFinishedAt");
+            if (revision != null) result["revision"] = revision;
+            CopyIfPresent(state, result, "finishedAt", "assertCount", "durationSec", "overallStatus", "message", "consoleSuppression", "sceneRestoreError", "sceneSnapshot", "testsFinishedAt",
+                "handlerStartedAt", "runnerStartedAt", "frameworkIdleAt", "restoreStartedAt");
             if (running)
-                result["pollAfterMs"] = 500;
+                result["pollAfterMs"] = status is "restoring" or "cancelling" ? 500 : 1000;
 
             var effectiveDetail = detail == "auto" ? running ? "summary" : "failures" : detail;
             result["detail"] = effectiveDetail;
@@ -747,6 +759,8 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             var json = SessionState.GetString(key, "");
             try
             {
+                state["frameworkIdleAt"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                state["restoreStartedAt"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 if (!string.IsNullOrEmpty(json)) RestoreScenesNow(JObject.Parse(json));
                 state["status"] = state["terminalStatus"]?.Value<string>() ?? (string)state["status"];
                 state["finishedAt"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -799,7 +813,13 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             }
 
             public void RunStarted(ITestAdaptor testsToRun)
-                => McpTestProgressOverlay.RunStarted(_runId, CountSelectedTests(testsToRun));
+            {
+                var key = SessionKeyPrefix + _runId;
+                var state = JObject.Parse(SessionState.GetString(key, "{}"));
+                state["runnerStartedAt"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                SessionState.SetString(key, state.ToString());
+                McpTestProgressOverlay.RunStarted(_runId, CountSelectedTests(testsToRun));
+            }
 
             private static int CountSelectedTests(ITestAdaptor test)
             {

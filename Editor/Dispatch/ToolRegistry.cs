@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace LittleBrushGames.Mcp.Editor.Dispatch
 {
@@ -66,9 +70,31 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
             Collect(_editorProviders, next, errors);
             Collect(_runtimeProviders, next, errors);
             _tools = next;
-            Revision = Guid.NewGuid().ToString("N");
+            // A reload/re-registration does not invalidate unchanged tool contracts.
+            var contracts = new JArray(next.Values.OrderBy(t => t.Name, StringComparer.Ordinal).Select(t => new JObject
+            {
+                ["name"] = t.Name, ["description"] = t.Description,
+                ["inputSchema"] = t.InputSchema, ["outputSchema"] = t.OutputSchema, ["annotations"] = t.Annotations,
+                ["availability"] = (int)t.Availability, ["execution"] = (int)t.Execution,
+                ["requiresMainThread"] = t.RequiresMainThread, ["requiresWriterLease"] = t.RequiresWriterLease,
+                ["reloadSafe"] = t.ReloadSafe, ["timeoutTicks"] = t.Timeout?.Ticks,
+                ["exclusiveGroup"] = t.ExclusiveGroup, ["trustCategory"] = (int)t.TrustCategory,
+                ["resolvesTrust"] = t.TrustCategoryResolver != null,
+                ["backgroundOperation"] = t.BackgroundOperationActive != null,
+            }));
+            using var sha = SHA256.Create();
+            Revision = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(
+                Canonicalize(contracts).ToString(Formatting.None)))).Replace("-", "").ToLowerInvariant();
             _errors = errors;
         }
+
+        private static JToken Canonicalize(JToken value) => value switch
+        {
+            JObject obj => new JObject(obj.Properties().OrderBy(p => p.Name, StringComparer.Ordinal)
+                .Select(p => new JProperty(p.Name, Canonicalize(p.Value)))),
+            JArray array => new JArray(array.Select(Canonicalize)),
+            _ => value.DeepClone(),
+        };
 
         private static void Collect(
             IReadOnlyList<IToolProvider> providers,

@@ -44,12 +44,15 @@ feedback. Use the execution journal for snippet evidence. The file is created on
 
 - Edit source files directly with filesystem tools, then call `editor.ensure_compiled` once per coherent batch. Source-file editing is not an MCP operation. The cache fingerprints imported sources and on-disk script, assembly, response-file, plugin, package-manifest, and project configuration inputs; ordinary art edits and hidden/sample directories are excluded.
 - `unity.tools`: request up to 16 schemas with `names`; unknown names return per-item errors. Cache schemas
-  using `registryRevision`; availability and trust decisions remain dynamic. `includeDescriptions` adds
+  using `registryRevision`, which is stable across rebuilds/reloads with identical public contracts;
+  availability and trust decisions remain dynamic and must not be cached with the schema. `includeDescriptions` adds
   descriptions to searches without schemas. Existing `name` lookups still work.
 - `editor.status`: `detail: compact` omits configuration/activity details while retaining readiness,
   ownership, stall and registry-error fields. Full status remains the default.
 - `tests.result`: pass the last `revision` as `afterRevision` to suppress unchanged payloads. Omit it when
-  changing detail or pagination. This is immediate polling, not a blocking wait.
+  changing detail or pagination. Unchanged responses skip result projection. Follow `pollAfterMs`:
+  ordinary progress uses 1 second, unchanged running results 2 seconds, and cleanup/cancellation 500 ms.
+  This is immediate polling, not a blocking wait.
 - `scene.preview_screenshot`: optional world-space `cameraPosition: [x,y,z]` and
   `cameraRotation: [x,y,z]` (Euler degrees) affect only the temporary camera. Rotation alone retains
   auto-framing; explicit position overrides placement. Existing framing remains the default.
@@ -57,8 +60,22 @@ feedback. Use the execution journal for snippet evidence. The file is created on
   only for the selected page, including exact-path filters. Large arrays still require a counting scan.
 - Usage statistics now track `measurementCalls`, request JSON characters, response JSON characters
   excluding image payloads, decoded image bytes, writer wait, and dispatch time. These fields cover only
-  calls since this update; older totals remain intact. Dispatch includes authorization/main-thread queues,
-  so it is not pure generator CPU time. Character counts are not tokenizer measurements.
+  calls since this update; older totals remain intact. Dispatch includes writer waiting and
+  authorization/main-thread queues: do not add dispatch and writer time or treat dispatch as CPU time.
+  Character counts are not tokenizer measurements.
+- `editor.ensure_compiled` reuses unchanged successes and errors, normally discovers changes with a
+  non-forced refresh, and requests compilation only when a matching result is still absent (or force
+  requires a new pass). Completed passes are checked against current inputs, including after waits.
+  Unknown fingerprints fail rather than certifying stale code. One two-minute budget bounds compile
+  settling; the transport's outer timeout still applies. `editor.compile.errors` reads the last pass
+  without writer ownership but does not certify current unimported source.
+- Compile replies include `timingsMs` (fingerprint/refresh/wait/editMode), request counts and `replayed`.
+  Statistics aggregate these under `compileTimingsMs`, `compileTimingCalls`, `compileSources` and request
+  counts. These measure the responding handler attempt, not work lost across a domain reload; replayed
+  attempts can report zero requests after an earlier attempt already triggered compilation.
+- `outcomes` separates RPC errors, timeouts, compiler/test failures, other result failures and successes.
+  These new buckets do not retroactively classify old totals. `errorCodeCountingFixedUtc` marks the fix
+  for nested RPC counters previously stuck at one; pre-fix error frequencies cannot be reconstructed.
 
 ### Journal controls
 
@@ -78,3 +95,9 @@ and duration/name sorting. Successful medians are grouped by test name, mode, an
 Unity version. History retains up to 20 runs / 16 MiB in `Logs/McpUsage/test-history.json`.
 Failure output and stack traces are not retained there; use the run result for diagnostics.
 Times are evidence, not a regression verdict across different machines or source revisions.
+New runs retain lifecycle timestamps and `phaseDurationsMs` for preparation, runner startup, the
+runner callback interval, framework cleanup (including watchdog detection) and scene restoration.
+`handlerDurationSec` includes pre-launch preparation; existing `wallDurationSec` starts only after
+that preparation and retains its original meaning. Neither includes dispatch queue/authorization
+before handler entry. The callback interval is distinct from Unity's reported `durationSec`.
+Missing timestamps in older/recovered runs are omitted from phase totals, not inferred as zero.

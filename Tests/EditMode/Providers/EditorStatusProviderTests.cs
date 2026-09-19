@@ -331,6 +331,15 @@ namespace LittleBrushGames.Mcp.Tests.Providers
                 passCounter: 12), Is.False);
         }
 
+        [TestCase("new-input", "compiled-input", 3)]
+        [TestCase(null, "compiled-input", 3)]
+        [TestCase("compiled-input", null, 3)]
+        [TestCase("compiled-input", "compiled-input", 0)]
+        public void CompletedPassCannotCertifyChangedOrUnknownInputs(string current, string completed, int passes)
+        {
+            Assert.That(CanUseCachedResult(false, false, false, false, current, completed, passes), Is.False);
+        }
+
         private static bool CanUseCachedResult(
             bool force,
             bool replayed,

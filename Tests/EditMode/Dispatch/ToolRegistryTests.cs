@@ -17,6 +17,7 @@ namespace LittleBrushGames.Mcp.Tests.Dispatch
         {
             public string Namespace => "stub";
             public ToolAvailability Availability = ToolAvailability.Either;
+            public JObject Schema = new() { ["type"] = "object" };
 
             public void RegisterTools(IToolRegistration reg)
             {
@@ -24,11 +25,33 @@ namespace LittleBrushGames.Mcp.Tests.Dispatch
                 {
                     Name = "stub.a",
                     Description = "stub",
-                    InputSchema = new JObject { ["type"] = "object" },
+                    InputSchema = Schema,
                     Availability = Availability,
                     Handler = (_, _) => new ValueTask<ToolResult>(ToolResult.Text("ok")),
                 });
             }
+        }
+
+        [Test]
+        public void RevisionSurvivesIdenticalRebuildsAndChangesWithContract()
+        {
+            var provider = new StubProvider { Schema = JObject.Parse("{'type':'object','properties':{'a':{'type':'string'}}}") };
+            var registry = new ToolRegistry();
+            registry.SetEditorProviders(new IToolProvider[] { provider });
+            var revision = registry.Revision;
+            registry.SetRuntimeProviders(Array.Empty<IToolProvider>());
+            Assert.That(registry.Revision, Is.EqualTo(revision));
+            var reloaded = new ToolRegistry();
+            provider.Schema = JObject.Parse("{'properties':{'a':{'type':'string'}},'type':'object'}");
+            reloaded.SetEditorProviders(new IToolProvider[] { provider });
+            Assert.That(reloaded.Revision, Is.EqualTo(revision), "JSON property order is not a schema change.");
+            provider.Schema["properties"]["a"]["type"] = "integer";
+            reloaded.SetEditorProviders(new IToolProvider[] { provider });
+            Assert.That(reloaded.Revision, Is.Not.EqualTo(revision));
+            var schemaRevision = reloaded.Revision;
+            provider.Availability = ToolAvailability.PlayMode;
+            reloaded.SetEditorProviders(new IToolProvider[] { provider });
+            Assert.That(reloaded.Revision, Is.Not.EqualTo(schemaRevision));
         }
 
         [Test]

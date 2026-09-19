@@ -14,6 +14,31 @@ namespace LittleBrushGames.Mcp.Tests.Transport
         private static JObject Ok => new() { ["result"] = new JObject() };
 
         [Test]
+        public void RepeatedErrorAndCompileMeasurementsAccumulateAcrossReload()
+        {
+            var error = JObject.Parse("{'error':{'code':-32001}}");
+            var compile = JObject.Parse("{'result':{'structuredContent':{'success':false,'errorCount':1,'source':'cached','timingsMs':{'fingerprint':8,'wait':12,'private':'do-not-store'},'compileRequests':0,'refreshRequests':0}}}");
+            for (var i = 0; i < 3; i++)
+            {
+                using var journal = new McpUsageJournal(_directory, Assert.Fail, false);
+                journal.Record("editor.ensure_compiled", null, error, 2);
+                journal.Record("editor.ensure_compiled", null, compile, 20);
+            }
+            var text = File.ReadAllText(Path.Combine(_directory, "statistics.json"));
+            var data = JObject.Parse(text);
+            var entry = data["tools"]["editor.ensure_compiled"];
+            Assert.That((int)entry["errorCodes"]["-32001"], Is.EqualTo(3));
+            Assert.That((int)entry["outcomes"]["rpc_error"], Is.EqualTo(3));
+            Assert.That((int)entry["outcomes"]["compile_errors"], Is.EqualTo(3));
+            Assert.That((int)entry["compileSources"]["cached"], Is.EqualTo(3));
+            Assert.That((long)entry["compileTimingsMs"]["fingerprint"], Is.EqualTo(24));
+            Assert.That((long)entry["compileTimingsMs"]["wait"], Is.EqualTo(36));
+            Assert.That((int)entry["compileTimingCalls"], Is.EqualTo(3));
+            Assert.That(data["errorCodeCountingFixedUtc"], Is.Not.Null);
+            Assert.That(text, Does.Not.Contain("do-not-store"));
+        }
+
+        [Test]
         public void MetadataOnlyHistoryIsBoundedWhileStatisticsKeepAllCalls()
         {
             using (var journal = new McpUsageJournal(_directory, Assert.Fail, false, executionRetention: 2, retainCode: false))

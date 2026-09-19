@@ -133,6 +133,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             reg.Register(new ToolDescriptor
             {
                 Name = "editor.compile.errors",
+                RequiresWriterLease = false,
+                TrustCategory = ToolTrustCategory.Read,
                 Description = "Read the last compile result. Defaults to paged errors; warnings are counted but returned only with detail=all.",
                 Availability = ToolAvailability.Always,
                 Execution = ToolExecution.Sync,
@@ -517,75 +519,124 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             ToolContext ctx, bool force, string playSessionToken, CancellationToken ct, bool replayed = false)
         {
             var startedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            try
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var timings = new JObject { ["fingerprint"] = 0L, ["refresh"] = 0L, ["wait"] = 0L, ["editMode"] = 0L };
+            var compileRequests = 0;
+            var refreshRequests = 0;
+            var phase = "timeout_inflight";
+            string currentHash = null;
+            var initialPass = CompileErrorStore.PassCounter;
+
+            TimeSpan Remaining()
             {
-                if (await WaitForActiveCompilation(ctx, ct))
-                    return BuildEnvelope("fresh", CompileErrorStore.LastInputHash ?? SafeCurrentHash(), startedAt);
+                var remaining = TimeSpan.FromMinutes(2) - watch.Elapsed;
+                if (remaining <= TimeSpan.Zero) throw new TimeoutException("Compilation inputs did not settle within two minutes.");
+                return remaining;
             }
-            catch (TimeoutException ex)
+            void AddTime(string key, long before) => timings[key] = (long)timings[key] + watch.ElapsedMilliseconds - before;
+            string Fingerprint()
             {
-                return BuildCompileTimeoutEnvelope("timeout_inflight", CompileErrorStore.LastInputHash ?? SafeCurrentHash(), startedAt, ex);
-            }
-
-            var currentHash = SafeCurrentHash();
-            var lastHash = CompileErrorStore.LastInputHash;
-
-            if (CanUseCachedResult(force, replayed, EditorApplication.isCompiling, EditorApplication.isUpdating,
-                    currentHash, lastHash, CompileErrorStore.PassCounter))
-                return BuildEnvelope(force ? "replayed_cached" : "cached", currentHash, startedAt);
-
-            await EnsureOwnedEditMode(ctx, playSessionToken, "editor.ensure_compiled", ct);
-
-            try
-            {
-                if (await WaitForActiveCompilation(ctx, ct))
-                    return BuildEnvelope("fresh", CompileErrorStore.LastInputHash ?? SafeCurrentHash(), startedAt);
-            }
-            catch (TimeoutException ex)
-            {
-                return BuildCompileTimeoutEnvelope("timeout_inflight", CompileErrorStore.LastInputHash ?? currentHash, startedAt, ex);
-            }
-
-            currentHash = SafeCurrentHash();
-            lastHash = CompileErrorStore.LastInputHash;
-            if (CanUseCachedResult(force, replayed, EditorApplication.isCompiling, EditorApplication.isUpdating,
-                    currentHash, lastHash, CompileErrorStore.PassCounter))
-                return BuildEnvelope(force ? "replayed_cached" : "cached", currentHash, startedAt);
-
-            // Force-refresh + request compile + event-driven wait.
-            var passCounterBefore = CompileErrorStore.PassCounter;
-            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
-            CompilationPipeline.RequestScriptCompilation();
-
-            try
-            {
-                await ctx.Frames.WaitUntilAsync(
-                    () => !EditorApplication.isCompiling && CompileErrorStore.PassCounter > passCounterBefore,
-                    TimeSpan.FromMinutes(2),
-                    ct);
-            }
-            catch (TimeoutException ex)
-            {
-                var afterHash = SafeCurrentHash() ?? currentHash;
-                if (!EditorApplication.isCompiling
-                    && afterHash != null
-                    && CompileErrorStore.LastInputHash == afterHash
-                    && CompileErrorStore.PassCounter > 0)
+                var before = watch.ElapsedMilliseconds;
+                try
                 {
-                    var recovered = BuildEnvelope("cached_after_timeout", afterHash, startedAt);
-                    recovered["timeoutRecovered"] = true;
-                    recovered["timeoutMessage"] = ex.Message;
-                    recovered["hint"] = "The compile wait timed out, but the latest compile snapshot matches the current script inputs.";
-                    return recovered;
+                    return SafeCurrentHash() ?? throw new McpToolException(McpErrorCodes.ToolError,
+                        "Cannot fingerprint compilation inputs. No compile result can certify the current files; inspect filesystem access before retrying.");
+                }
+                finally { AddTime("fingerprint", before); }
+            }
+            async ValueTask WaitForCompilation()
+            {
+                var before = watch.ElapsedMilliseconds;
+                try { await WaitForActiveCompilation(ctx, ct, Remaining()); }
+                finally { AddTime("wait", before); }
+            }
+            JObject Reply(JObject envelope)
+            {
+                envelope["timingsMs"] = timings;
+                envelope["compileRequests"] = compileRequests;
+                envelope["refreshRequests"] = refreshRequests;
+                envelope["replayed"] = replayed;
+                return envelope;
+            }
+            bool CurrentPassMatches(bool requireNewPass) => CanUseCachedResult(
+                requireNewPass, false, EditorApplication.isCompiling, EditorApplication.isUpdating,
+                currentHash, CompileErrorStore.LastInputHash, CompileErrorStore.PassCounter);
+
+            try
+            {
+                await WaitForCompilation();
+                currentHash = Fingerprint();
+                // An already-running pass also satisfies force, but only for its actual inputs.
+                var forcePending = force && !replayed && CompileErrorStore.PassCounter == initialPass;
+                if (CurrentPassMatches(forcePending))
+                    return Reply(BuildEnvelope(CompileErrorStore.PassCounter > initialPass ? "fresh"
+                        : force ? "replayed_cached" : "cached", currentHash, startedAt));
+
+                // No second disk scan when both state checks complete synchronously in Edit Mode.
+                if (EditorApplication.isPlaying || EditorApplication.isPlayingOrWillChangePlaymode)
+                {
+                    var before = watch.ElapsedMilliseconds;
+                    try { await EnsureOwnedEditMode(ctx, playSessionToken, "editor.ensure_compiled", ct); }
+                    finally { AddTime("editMode", before); }
+                    await WaitForCompilation();
+                    currentHash = Fingerprint();
+                    forcePending &= CompileErrorStore.PassCounter == initialPass;
+                    if (CurrentPassMatches(forcePending))
+                        return Reply(BuildEnvelope("fresh", currentHash, startedAt));
                 }
 
-                return BuildCompileTimeoutEnvelope("timeout_refresh", afterHash ?? currentHash, startedAt, ex);
-            }
+                while (true)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    Remaining();
+                    phase = "timeout_refresh";
+                    var beforeRefreshPass = CompileErrorStore.PassCounter;
+                    var before = watch.ElapsedMilliseconds;
+                    try
+                    {
+                        refreshRequests++;
+                        AssetDatabase.Refresh();
+                    }
+                    finally { AddTime("refresh", before); }
+                    // Give Unity's automatic compilation request a tick to start before deciding
+                    // whether an explicit request is necessary. Never cache by elapsed time alone.
+                    before = watch.ElapsedMilliseconds;
+                    try { await ctx.Frames.WaitNextFrameAsync(ct); }
+                    finally { AddTime("wait", before); }
+                    await WaitForCompilation();
+                    currentHash = Fingerprint();
+                    forcePending &= CompileErrorStore.PassCounter == beforeRefreshPass;
+                    if (CurrentPassMatches(forcePending))
+                        return Reply(BuildEnvelope("fresh", currentHash, startedAt));
 
-            return BuildEnvelope("fresh", CompileErrorStore.LastInputHash ?? currentHash, startedAt);
+                    var beforeRequestPass = CompileErrorStore.PassCounter;
+                    compileRequests++;
+                    CompilationPipeline.RequestScriptCompilation();
+                    before = watch.ElapsedMilliseconds;
+                    try
+                    {
+                        await ctx.Frames.WaitUntilAsync(
+                            () => !EditorApplication.isCompiling && !EditorApplication.isUpdating
+                                && CompileErrorStore.PassCounter > beforeRequestPass,
+                            Remaining(), ct);
+                    }
+                    finally { AddTime("wait", before); }
+                    forcePending = false;
+                    currentHash = Fingerprint();
+                    if (CurrentPassMatches(false))
+                        return Reply(BuildEnvelope("fresh", currentHash, startedAt));
+                    // External edits during compilation require another pass, not a stale success.
+                    phase = "timeout_inputs_changed";
+                    Remaining();
+                }
+            }
+            catch (TimeoutException ex)
+            {
+                return Reply(BuildCompileTimeoutEnvelope(phase, currentHash, startedAt, ex));
+            }
         }
 
-        private static async ValueTask<bool> WaitForActiveCompilation(ToolContext ctx, CancellationToken ct)
+        private static async ValueTask<bool> WaitForActiveCompilation(ToolContext ctx, CancellationToken ct, TimeSpan? timeout = null)
         {
             var requireCompletedPass = EditorApplication.isCompiling;
             if (!requireCompletedPass && !EditorApplication.isUpdating)
@@ -596,7 +647,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 () => !EditorApplication.isCompiling
                       && !EditorApplication.isUpdating
                       && (!requireCompletedPass || CompileErrorStore.PassCounter > passBefore),
-                TimeSpan.FromMinutes(2),
+                timeout ?? TimeSpan.FromMinutes(2),
                 ct);
             return CompileErrorStore.PassCounter > passBefore;
         }

@@ -21,6 +21,29 @@ namespace LittleBrushGames.Mcp.Tests.Transport
         };
 
         [Test]
+        public void LifecycleTimingsIncludePreparationAndKeepLegacyWallMeaning()
+        {
+            var state = Run("phases", 2);
+            state["handlerStartedAt"] = 500;
+            state["runnerStartedAt"] = 2000;
+            state["testsFinishedAt"] = 4000;
+            state["frameworkIdleAt"] = 4500;
+            state["restoreStartedAt"] = 4500;
+            McpTestHistory.Record(PathName, state, "6000");
+            McpTestHistory.Record(PathName, Run("older", 2), "6000");
+            var runs = (JArray)McpTestHistory.Read(PathName)["runs"];
+            var phases = runs[0]["phaseDurationsMs"];
+            Assert.That((long)phases["preparation"], Is.EqualTo(500));
+            Assert.That((long)phases["runnerStartup"], Is.EqualTo(1000));
+            Assert.That((long)phases["runner"], Is.EqualTo(2000));
+            Assert.That((long)phases["frameworkCleanup"], Is.EqualTo(500));
+            Assert.That((long)phases["restore"], Is.EqualTo(500));
+            Assert.That((double)runs[0]["wallDurationSec"], Is.EqualTo(4));
+            Assert.That((double)runs[0]["handlerDurationSec"], Is.EqualTo(4.5));
+            Assert.That(runs[1]["phaseDurationsMs"], Is.Null, "Old samples must not invent zero-duration phases.");
+        }
+
+        [Test]
         public void ReloadDeduplicatesAndSeparatesModesFailuresAndVersions()
         {
             McpTestHistory.Record(PathName, Run("one", 2), "6000");

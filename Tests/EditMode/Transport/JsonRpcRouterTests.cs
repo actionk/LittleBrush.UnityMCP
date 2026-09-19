@@ -763,7 +763,7 @@ namespace LittleBrushGames.Mcp.Tests.Transport
             Assert.That(recordedResponse["result"], Is.Not.Null);
         }
         [Test]
-        public async Task GatewayCatalogBatchesSchemasAndChangesRevisionOnRebuild()
+        public async Task GatewayCatalogBatchesSchemasAndChangesRevisionOnlyWithContracts()
         {
             var registry = new ToolRegistry();
             registry.SetEditorProviders(new IToolProvider[] { new InlineProvider("probe.batch", (_, _) => new ValueTask<ToolResult>(ToolResult.Text("ok"))) });
@@ -776,7 +776,15 @@ namespace LittleBrushGames.Mcp.Tests.Transport
             Assert.That(content["tools"][0]["inputSchema"], Is.Not.Null);
             Assert.That((string)content["tools"][1]["error"], Is.EqualTo("not_found"));
             registry.SetRuntimeProviders(Array.Empty<IToolProvider>());
+            Assert.That(registry.Revision, Is.EqualTo(original));
+            registry.SetRuntimeProviders(new IToolProvider[]
+            {
+                new InlineProvider("probe.added", (_, _) => new ValueTask<ToolResult>(ToolResult.Text("ok"))),
+            });
             Assert.That(registry.Revision, Is.Not.EqualTo(original));
+            var changed = await router.HandleAsync(JObject.Parse(@"{'id':2,'method':'tools/call','params':{'name':'unity.tools','arguments':{'names':['probe.batch','probe.added']}}}"), CancellationToken.None);
+            Assert.That((string)changed["result"]["structuredContent"]["registryRevision"], Is.EqualTo(registry.Revision));
+            Assert.That(changed["result"]["structuredContent"]["tools"][1]["inputSchema"], Is.Not.Null);
         }
 
         private sealed class InlineProvider : IToolProvider
