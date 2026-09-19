@@ -21,15 +21,15 @@ namespace LittleBrushGames.Mcp.Editor.Providers
     /// frequently triggers native Unity crashes on prefabs with missing references.
     /// </summary>
     [McpToolProvider]
-    public sealed class PrefabProvider : IToolProvider
+    public sealed class PrefabProvider : AttributedToolProvider
     {
         private const int PreviewLayer = 30;
 
-        public string Namespace => "prefab";
+        public override string Namespace => "prefab";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePrefabCreate() =>
+            new ToolDescriptor
             {
                 Name = "prefab.create",
                 Description = "Create a new prefab at dest from an existing source prefab. Uses scene-free LoadPrefabContents + SaveAsPrefabAsset — does not dirty the active scene. Modes: 'copy' creates a standalone prefab, 'variant' creates a prefab variant linked to src.",
@@ -46,9 +46,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Create,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePrefabCreateFromSceneObject() =>
+            new ToolDescriptor
             {
                 Name = "prefab.create_from_scene_object",
                 Description = "Create a prefab from one GameObject in a loaded or project scene without dirtying or modifying the source scene or loaded scene set. Dry-run is the default; writes require confirm=true. Supports an optional wrapper root, __PivotVisual-style child name, exact relative child exclusions, transform reset, and explicit overwrite.",
@@ -73,9 +75,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = CreateFromSceneObject,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePrefabRead() =>
+            new ToolDescriptor
             {
                 Name = "prefab.read",
                 Description = "Read a prefab hierarchy. Defaults to a sparse outline; request targeted component properties only when needed.",
@@ -102,9 +106,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Read,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePrefabAddNestedPrefab() =>
+            new ToolDescriptor
             {
                 Name = "prefab.add_nested_prefab",
                 Description = "Add a source prefab as a real nested Prefab instance under a parent in an existing prefab asset. Preserves prefab linkage and applies optional local transform overrides.",
@@ -124,9 +130,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = AddNestedPrefab,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePrefabWrite() =>
+            new ToolDescriptor
             {
                 Name = "prefab.write",
                 Description = "Atomically apply a batch of operations to a prefab asset (add_component, remove_component, set_property, create_gameobject, delete_gameobject, rename_gameobject, set_active, set_transform, reparent). Scene-free: if any operation fails, the prefab is not saved. Paths are relative to the prefab root.",
@@ -141,9 +149,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Write,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePrefabReplaceId() =>
+            new ToolDescriptor
             {
                 Name = "prefab.replace_id",
                 Description = "Find exact serialized string values and authored object references matching an ID across a prefab hierarchy, replace them in scene-free prefab contents with Undo, and optionally save without reloading the active scene.",
@@ -161,9 +171,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = ReplaceId,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePrefabRemoveUnusedOverrides() =>
+            new ToolDescriptor
             {
                 Name = "prefab.remove_unused_overrides",
                 Description = "Inspect nested Prefab instances in a prefab asset and remove only Unity-reported unused overrides with PrefabUtility.RemoveUnusedOverrides. Dry-run is the safe default; pass dryRun=false to opt into an apply and save.",
@@ -182,9 +194,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = RemoveUnusedOverrides,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePrefabPreviewScreenshot() =>
+            new ToolDescriptor
             {
                 Name = "prefab.preview_screenshot",
                 Description = "Render a UI or 3D prefab offscreen in an isolated preview scene during Edit or Play Mode. UI prefabs report resolved layout ownership, clipping, overlap, and text-fit warnings; 3D prefabs copy gameplay camera settings, auto-frame renderer bounds, and accept an optional Euler rotation override.",
@@ -232,8 +246,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = PreviewScreenshot,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Create(ToolContext ctx, CancellationToken ct)
         {

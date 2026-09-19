@@ -1,6 +1,6 @@
 # Authoring MCP Tools
 
-Editor providers carry `[McpToolProvider]` so discovery instantiates them on load. For ordinary typed methods, inherit `AttributedToolProvider` and add `[McpTool]`; it implements the existing `IToolProvider` contract. Manual `IToolProvider.RegisterTools` remains available for complex schemas and lifecycle hooks. Both routes produce the same `ToolDescriptor` and use the same dispatcher, trust checks, queues and gateway.
+Editor providers carry `[McpToolProvider]` so discovery instantiates them on load. Inherit `AttributedToolProvider` and use `[McpTool]` for typed handlers or `[McpToolDeclaration]` for custom descriptors. Registration is automatic; both forms use the existing dispatcher, trust checks, queues and gateway.
 
 ## Non-disruptive automation
 
@@ -44,7 +44,7 @@ whole provider through the existing registry diagnostics, leaving healthy provid
 - Parameters support `string`, `bool`, `int`, `long`, `float`, `double`, ordinary named enums,
   nullable value types and one-dimensional arrays. Non-finite numbers and conversion overflow are
   rejected. Flags enums, Unity object/component arguments, dictionaries, arbitrary DTOs, generics,
-  ref/out parameters and other complex contracts use manual registration in this first version.
+  ref/out parameters and other complex contracts require an explicit JSON schema and handler declaration.
 - C# optional defaults make parameters optional. Explicit null is accepted for nullable types and
   parameters whose default is null. Unknown JSON properties and coercions such as strings to numbers
   are rejected. `ToolContext` and `CancellationToken` are injected and never exposed as user arguments.
@@ -58,17 +58,36 @@ whole provider through the existing registry diagnostics, leaving healthy provid
   transactions, preservation of user-owned state and result semantics. Destructive hints default to
   true for non-read operations; explicitly declare a non-destructive write when appropriate.
 
-`FeatureRequestProvider` is the first migrated provider. Its existing tool name, full input schema,
-policy and storage behavior are preserved. Subsequent migrations should compare old/new descriptors
-and exercise the existing behavior before removing manual registration. Do not expose arbitrary
-class/method invocation or generate unbounded discovery responses.
+Preserve tool names, input schemas, policy and behavior when migrating existing commands. Compare
+old/new descriptors and exercise the existing behavior. Do not expose arbitrary class/method
+invocation or generate unbounded discovery responses.
 
-## Manual registration
+## Custom declarations
 
-Use `IToolProvider.RegisterTools` and `registration.Register(new ToolDescriptor { ... })` for
-contracts needing custom object schemas, dynamic trust resolution, background-operation probes or
-other descriptor behavior not represented by the attributes. Attribute and manual providers coexist;
-no second gateway, compatibility alias or global migration is required.
+Mark a parameterless method returning `ToolDescriptor` with `[McpToolDeclaration]` for nested schemas,
+dynamic trust resolution, background-operation probes, explicit execution modes or other custom
+metadata. It returns the complete descriptor, including the existing handler delegate:
+
+```csharp
+[McpToolDeclaration]
+private ToolDescriptor DescribeInspect() => new()
+{
+    Name = "example.inspect",
+    Description = "Inspect a structured query.",
+    TrustCategory = ToolTrustCategory.Read,
+    InputSchema = QuerySchema(),
+    Handler = Inspect,
+};
+```
+
+For related commands that share setup or are generated from a fixed list, return
+`IEnumerable<ToolDescriptor>` and `yield return` each descriptor. Factories run once per registration;
+requests call their delegates directly, with no reflection or extra argument binding. Factory errors,
+invalid descriptors and duplicate names reject the entire provider atomically. Do not combine the two
+attributes on one method. Keep ordinary business methods unmarked unless intentionally exposed.
+
+`IToolProvider.RegisterTools` remains the underlying extension contract for external/manual providers
+and runtime integrations; built-in editor providers need no registration calls.
 
 ## Tool descriptor
 

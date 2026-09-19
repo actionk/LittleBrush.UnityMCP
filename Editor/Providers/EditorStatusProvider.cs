@@ -13,11 +13,12 @@ using UnityEngine.SceneManagement;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class EditorStatusProvider : IToolProvider
+    public sealed class EditorStatusProvider : AttributedToolProvider
     {
-        public string Namespace => "editor";
+        public override string Namespace => "editor";
 
-        public void RegisterTools(IToolRegistration reg)
+        [McpToolDeclaration]
+        private System.Collections.Generic.IEnumerable<ToolDescriptor> DescribeTools()
         {
             McpPlayModeOwnership.Initialize();
 
@@ -26,7 +27,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             // reload), every other tool times out and the agent is blind. Status
             // reads cached values from McpBridgeHost so it answers instantly even
             // when nothing else can run.
-            reg.Register(new ToolDescriptor
+            yield return new ToolDescriptor
             {
                 Name = "editor.status",
                 Description = "Editor state: isPlaying, isPaused, isCompiling, editorFocused, lastUserActivityAt, editorIdleForMs, activeScene, unityVersion, projectPath, mainThreadStalledMs (>0 means tools are likely timing out).",
@@ -36,8 +37,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 RequiresMainThread = false,
                 InputSchema = JObject.Parse(@"{ 'type': 'object', 'properties': { 'detail': { 'enum': ['compact', 'full'] } } }"),
                 Handler = Status,
-            });
-            reg.Register(new ToolDescriptor
+            };
+            yield return new ToolDescriptor
             {
                 Name = "editor.tools.list",
                 Description = "Search and page the live Unity-side tool registry. Returns compact name and availability records unless includeMetadata=true.",
@@ -56,8 +57,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = ListTools,
-            });
-            reg.Register(new ToolDescriptor
+            };
+            yield return new ToolDescriptor
             {
                 Name = "editor.metrics",
                 Description = "Page session-local MCP tool duration and serialized response-size metrics. Use query to inspect suspected high-context tools.",
@@ -75,8 +76,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Metrics,
-            });
-            reg.Register(new ToolDescriptor
+            };
+            yield return new ToolDescriptor
             {
                 Name = "editor.play",
                 Description = "Enter Play Mode under the local EditorState trust policy. Returns a playSessionToken; only that token can stop the MCP-started session.",
@@ -90,8 +91,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Play,
-            });
-            reg.Register(new ToolDescriptor
+            };
+            yield return new ToolDescriptor
             {
                 Name = "editor.stop",
                 ExclusiveGroup = "profiler",
@@ -109,8 +110,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Stop,
-            });
-            reg.Register(new ToolDescriptor
+            };
+            yield return new ToolDescriptor
             {
                 Name = "editor.request_stop_play_mode",
                 Description = "Request stopping user-owned Play Mode under the local UserPlayModeStop trust policy.",
@@ -127,10 +128,10 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = RequestStopPlayMode,
-            });
-            reg.Register(Tool("editor.pause", "Pause the editor.", Pause));
-            reg.Register(Tool("editor.resume", "Resume the editor.", Resume));
-            reg.Register(new ToolDescriptor
+            };
+            yield return Tool("editor.pause", "Pause the editor.", Pause);
+            yield return Tool("editor.resume", "Resume the editor.", Resume);
+            yield return new ToolDescriptor
             {
                 Name = "editor.compile.errors",
                 RequiresWriterLease = false,
@@ -141,9 +142,9 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 ReloadSafe = true,
                 InputSchema = CompileResultSchema(),
                 Handler = CompileErrors,
-            });
-            reg.Register(Tool("editor.refresh", "Force AssetDatabase import to detect external file changes. Prefer editor.ensure_compiled when you also need compile errors.", Refresh, ToolAvailability.EditMode, reloadSafe: true));
-            reg.Register(new ToolDescriptor
+            };
+            yield return Tool("editor.refresh", "Force AssetDatabase import to detect external file changes. Prefer editor.ensure_compiled when you also need compile errors.", Refresh, ToolAvailability.EditMode, reloadSafe: true);
+            yield return new ToolDescriptor
             {
                 Name = "editor.ensure_compiled",
                 Description = "Compile once after a coherent C#/.asmdef/package edit batch and return exact errors. Omit force so unchanged script inputs reuse the cached result; asset-only changes do not need compilation. Reload-safe across domain reloads.",
@@ -163,8 +164,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = EnsureCompiled,
-            });
-            reg.Register(new ToolDescriptor
+            };
+            yield return new ToolDescriptor
             {
                 Name = "editor.wait_ready",
                 Description = "Wait until the Editor is ready, then return status plus a compact compile result.",
@@ -184,7 +185,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = WaitReady,
-            });
+            };
         }
 
         private static ToolDescriptor Tool(string name, string description, Func<ToolContext, CancellationToken, ValueTask<ToolResult>> handler,

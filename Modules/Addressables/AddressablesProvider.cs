@@ -15,7 +15,7 @@ using UnityEditor.AddressableAssets.Settings.GroupSchemas;
 namespace LittleBrushGames.Mcp.Modules.Addressables
 {
     [McpToolProvider]
-    public sealed class AddressablesProvider : IToolProvider
+    public sealed class AddressablesProvider : AttributedToolProvider
     {
         private readonly Func<AddressableAssetSettings> _settingsProvider;
 
@@ -29,11 +29,11 @@ namespace LittleBrushGames.Mcp.Modules.Addressables
             _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         }
 
-        public string Namespace => "addressables";
+        public override string Namespace => "addressables";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesList() =>
+            new ToolDescriptor
             {
                 Name = "addressables.list",
                 Description = "List Addressables groups; explicit entries are opt-in and bounded.",
@@ -49,9 +49,11 @@ namespace LittleBrushGames.Mcp.Modules.Addressables
                     }
                 }"),
                 Handler = List,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesFind() =>
+            new ToolDescriptor
             {
                 Name = "addressables.find",
                 Description = "Find explicit Addressables entries by address text, label, path text, guid, or group name. At least one filter is required.",
@@ -69,9 +71,11 @@ namespace LittleBrushGames.Mcp.Modules.Addressables
                     }
                 }"),
                 Handler = Find,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesAdd() =>
+            new ToolDescriptor
             {
                 Name = "addressables.add",
                 Description = "Add or move assets into Addressables. Supports per-asset address, group, and labels. Args: { groupName?: string, labels?: string[], assets: [{ path, address?, groupName?, labels? }] }.",
@@ -100,9 +104,11 @@ namespace LittleBrushGames.Mcp.Modules.Addressables
                     }
                 }"),
                 Handler = Add,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesRemove() =>
+            new ToolDescriptor
             {
                 Name = "addressables.remove",
                 Description = "Remove explicit Addressables entries by path or guid. Returns removed and missing targets.",
@@ -115,9 +121,11 @@ namespace LittleBrushGames.Mcp.Modules.Addressables
                     }
                 }"),
                 Handler = Remove,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesSetAddress() =>
+            new ToolDescriptor
             {
                 Name = "addressables.set_address",
                 Description = "Set the address for an explicit Addressables entry. Args: { address: string, path?: string, guid?: string }.",
@@ -132,18 +140,22 @@ namespace LittleBrushGames.Mcp.Modules.Addressables
                     }
                 }"),
                 Handler = SetAddress,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesGroupCreate() =>
+            new ToolDescriptor
             {
                 Name = "addressables.group_create",
                 Description = "Create an Addressables group using the default group's schemas. Idempotent.",
                 Availability = ToolAvailability.EditMode,
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""required"": [""name""], ""properties"": { ""name"": { ""type"": ""string"", ""minLength"": 1 } } }"),
                 Handler = CreateGroup,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesProfiles() =>
+            new ToolDescriptor
             {
                 Name = "addressables.profiles",
                 Description = "Page Addressables profiles. Defaults to compact names; request detail=values for profile variables and values.",
@@ -158,18 +170,22 @@ namespace LittleBrushGames.Mcp.Modules.Addressables
                 }"),
                 Handler = ListProfiles,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesProfileSetActive() =>
+            new ToolDescriptor
             {
                 Name = "addressables.profile_set_active",
                 Description = "Set the active Addressables profile by name.",
                 Availability = ToolAvailability.EditMode,
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""required"": [""name""], ""properties"": { ""name"": { ""type"": ""string"", ""minLength"": 1 } } }"),
                 Handler = SetActiveProfile,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAddressablesBuild() =>
+            new ToolDescriptor
             {
                 Name = "addressables.build",
                 Description = "Build Addressables player content. Governed by the local Builds trust policy.",
@@ -179,8 +195,7 @@ namespace LittleBrushGames.Mcp.Modules.Addressables
                 ExclusiveGroup = "build",
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""properties"": {} }"),
                 Handler = Build,
-            });
-        }
+            };
 
         private ValueTask<ToolResult> List(ToolContext ctx, CancellationToken _)
         {

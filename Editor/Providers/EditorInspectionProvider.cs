@@ -9,25 +9,33 @@ using UnityEngine;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class EditorInspectionProvider : IToolProvider
+    public sealed class EditorInspectionProvider : AttributedToolProvider
     {
-        public string Namespace => "editor";
+        public override string Namespace => "editor";
         private static JObject PageSchema() => JObject.Parse(@"{'type':'object','additionalProperties':false,'properties':{'offset':{'type':'integer','minimum':0},'limit':{'type':'integer','minimum':1,'maximum':100}}}");
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(Read("editor.selection.read", "Read selected object identities without changing selection or focus. Paged; entity IDs are valid only in this Editor session.", SelectionRead));
-            reg.Register(Read("editor.windows.list", "List open Editor windows with type, title, bounds and entity ID. Does not open or focus windows. A listed window may be hidden behind another tab.", WindowsRead));
-            reg.Register(Read("editor.scene_view.read", "Read existing Scene view camera framing: pivot, rotation, zoom, projection and 2D mode. Does not move or focus views.", ViewsRead));
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorSelectionRead() =>
+            Read("editor.selection.read", "Read selected object identities without changing selection or focus. Paged; entity IDs are valid only in this Editor session.", SelectionRead);
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorWindowsList() =>
+            Read("editor.windows.list", "List open Editor windows with type, title, bounds and entity ID. Does not open or focus windows. A listed window may be hidden behind another tab.", WindowsRead);
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorSceneViewRead() =>
+            Read("editor.scene_view.read", "Read existing Scene view camera framing: pivot, rotation, zoom, projection and 2D mode. Does not move or focus views.", ViewsRead);
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorSelectionSet() =>
+            new ToolDescriptor
             {
                 Name = "editor.selection.set",
                 Description = "Select existing objects by session-local entity IDs without focusing or pinging a window. Empty array clears selection. Validates all IDs before changing selection.",
                 TrustCategory = ToolTrustCategory.EditorState,
                 InputSchema = JObject.Parse(@"{'type':'object','required':['entityIds'],'additionalProperties':false,'properties':{'entityIds':{'type':'array','maxItems':100,'uniqueItems':true,'items':{'type':'string'}}}}"),
                 Handler = SetSelection,
-            });
-        }
+            };
 
         private static ToolDescriptor Read(string name, string description, System.Func<ToolContext, CancellationToken, ValueTask<ToolResult>> handler) => new()
         {

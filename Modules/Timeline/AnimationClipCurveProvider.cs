@@ -13,16 +13,16 @@ using UnityEngine;
 namespace LittleBrushGames.Mcp.Modules.Timeline
 {
     [McpToolProvider]
-    public sealed class AnimationClipCurveProvider : IToolProvider
+    public sealed class AnimationClipCurveProvider : AttributedToolProvider
     {
         private const int MaxOperations = 128;
         private const int MaxKeys = 4096;
 
-        public string Namespace => "asset.animation_clip.curves";
+        public override string Namespace => "asset.animation_clip.curves";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetAnimationClipCurvesRead() =>
+            new ToolDescriptor
             {
                 Name = "asset.animation_clip.curves.read",
                 Description = "Read paged float and object-reference curves from a selected AnimationClip, including imported clip sub-assets. Key detail defaults to 25 keys for one binding.",
@@ -43,8 +43,11 @@ namespace LittleBrushGames.Mcp.Modules.Timeline
                 }"),
                 Handler = Read,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetAnimationClipCurvesWrite() =>
+            new ToolDescriptor
             {
                 Name = "asset.animation_clip.curves.write",
                 Description = "Atomically set or remove float curves on a standalone .anim asset. Requires expectedHash and supports dryRun.",
@@ -60,8 +63,7 @@ namespace LittleBrushGames.Mcp.Modules.Timeline
                     }
                 }"),
                 Handler = Write,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Read(ToolContext ctx, CancellationToken ct)
         {

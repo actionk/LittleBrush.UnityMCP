@@ -19,9 +19,9 @@ namespace LittleBrushGames.Mcp.Editor.Providers
     /// envelope so N imports cost a single pass.
     /// </summary>
     [McpToolProvider]
-    public sealed class ModelImporterProvider : IToolProvider
+    public sealed class ModelImporterProvider : AttributedToolProvider
     {
-        public string Namespace => "model_importer";
+        public override string Namespace => "model_importer";
 
         private static readonly HashSet<string> SupportedKeys = new(StringComparer.Ordinal)
         {
@@ -87,9 +87,9 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             "additiveReferencePoseFrame",
         };
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeModelImporterGet() =>
+            new ToolDescriptor
             {
                 Name = "model_importer.get",
                 Description = "Read whitelisted ModelImporter properties for a single asset.",
@@ -101,9 +101,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""properties"": { ""path"": { ""type"": ""string"" } }
                 }"),
                 Handler = Get,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeModelImporterSet() =>
+            new ToolDescriptor
             {
                 Name = "model_importer.set",
                 Description = "Set one or more whitelisted ModelImporter properties. Reimports if any value changed. Whitelist: sourceAvatar, animationType, avatarSetup, importAnimation, importBlendShapes, importVisibility, importCameras, importLights, optimizeGameObjects, useFileScale, globalScale.",
@@ -118,9 +120,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Set,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeModelImporterSetMany() =>
+            new ToolDescriptor
             {
                 Name = "model_importer.set_many",
                 Description = "Batch set whitelisted ModelImporter properties across many assets in a single StartAssetEditing/StopAssetEditing envelope. Replaces loops of GetAtPath+SaveAndReimport.",
@@ -135,9 +139,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = SetMany,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeModelImporterClipsGet() =>
+            new ToolDescriptor
             {
                 Name = "model_importer.clips.get",
                 Description = "Read stable primitive ModelImporterClipAnimation settings and an optimistic asset hash.",
@@ -155,9 +161,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 }"),
                 Handler = GetClips,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeModelImporterClipsSet() =>
+            new ToolDescriptor
             {
                 Name = "model_importer.clips.set",
                 Description = "Validate and set stable primitive ModelImporterClipAnimation settings by clip name. Requires expectedHash, supports dryRun and exact readback, and can opt into a scoped serialized .meta fallback when Unity rejects API persistence.",
@@ -178,9 +186,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = SetClips,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeModelImporterClipsSetMany() =>
+            new ToolDescriptor
             {
                 Name = "model_importer.clips.set_many",
                 Description = "Batch validate and set stable primitive ModelImporterClipAnimation settings with per-asset expectedHash values, durable sequential reimports, and an optional scoped serialized .meta fallback.",
@@ -211,8 +221,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = SetManyClips,
-            });
-        }
+            };
 
         // ---- Handlers --------------------------------------------------------
 

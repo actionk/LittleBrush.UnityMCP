@@ -12,7 +12,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
     [InitializeOnLoad]
-    public sealed class BuildProvider : IToolProvider
+    public sealed class BuildProvider : AttributedToolProvider
     {
         private const string StatePrefix = "McpBuild_";
         private const string ActiveKey = "McpBuild_Active";
@@ -22,11 +22,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             EditorApplication.delayCall += RecoverQueuedBuild;
         }
 
-        public string Namespace => "build";
+        public override string Namespace => "build";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeBuildSettings() =>
+            new ToolDescriptor
             {
                 Name = "build.settings",
                 Description = "Read active build target and enabled build scenes.",
@@ -34,8 +34,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 InputSchema = new JObject { ["type"] = "object" },
                 Handler = Settings,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeBuildPlayerSettingsRead() =>
+            new ToolDescriptor
             {
                 Name = "build.player_settings.read",
                 Description = "Read common PlayerSettings values with a concurrency hash.",
@@ -43,8 +46,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 InputSchema = new JObject { ["type"] = "object" },
                 Handler = ReadPlayerSettings,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeBuildPlayerSettingsWrite() =>
+            new ToolDescriptor
             {
                 Name = "build.player_settings.write",
                 Description = "Write common PlayerSettings values with expectedHash and dryRun validation.",
@@ -58,8 +64,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = WritePlayerSettings,
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeBuildStart() =>
+            new ToolDescriptor
             {
                 Name = "build.start",
                 Description = "Queue a Unity player build and return a runId before the blocking build begins. Governed by the local Builds trust policy; poll build.result.",
@@ -75,8 +84,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Start,
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeBuildResult() =>
+            new ToolDescriptor
             {
                 Name = "build.result",
                 Description = "Poll a queued Unity player build by runId.",
@@ -84,8 +96,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""required"": [""runId""], ""properties"": { ""runId"": { ""type"": ""string"" } } }"),
                 Handler = Result,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Settings(ToolContext ctx, CancellationToken ct)
             => new(ToolResult.Ok(new JObject

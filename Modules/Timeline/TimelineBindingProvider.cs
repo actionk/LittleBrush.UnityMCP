@@ -20,13 +20,13 @@ using Object = UnityEngine.Object;
 namespace LittleBrushGames.Mcp.Modules.Timeline
 {
     [McpToolProvider]
-    public sealed class TimelineBindingProvider : IToolProvider
+    public sealed class TimelineBindingProvider : AttributedToolProvider
     {
-        public string Namespace => "timeline.binding";
+        public override string Namespace => "timeline.binding";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeTimelineBindingWrite() =>
+            new ToolDescriptor
             {
                 Name = "timeline.binding.write",
                 Description = "Bind one Timeline track on a loaded scene's PlayableDirector to a compatible scene object or component. Existing different bindings are protected; supports dryRun and optional scene save.",
@@ -46,8 +46,7 @@ namespace LittleBrushGames.Mcp.Modules.Timeline
                     }
                 }"),
                 Handler = Write,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Write(ToolContext ctx, CancellationToken ct)
         {

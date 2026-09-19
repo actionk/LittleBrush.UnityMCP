@@ -17,15 +17,15 @@ using Object = UnityEngine.Object;
 namespace LittleBrushGames.Mcp.Modules.Timeline
 {
     [McpToolProvider]
-    public sealed class TimelineProvider : IToolProvider
+    public sealed class TimelineProvider : AttributedToolProvider
     {
         private const int MaxOperations = 256;
 
-        public string Namespace => "timeline";
+        public override string Namespace => "timeline";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeTimelineRead() =>
+            new ToolDescriptor
             {
                 Name = "timeline.read",
                 Description = "Read a Timeline asset as paged normalized tracks and clips with asset-local IDs and an optimistic hash. Track and per-track clip pages default to 25.",
@@ -43,8 +43,11 @@ namespace LittleBrushGames.Mcp.Modules.Timeline
                 }"),
                 Handler = Read,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeTimelineWrite() =>
+            new ToolDescriptor
             {
                 Name = "timeline.write",
                 Description = "Atomically create Animation tracks/clips or edit Timeline clip timing and duration settings. Requires expectedHash and supports dryRun. Create a track and read its trackId before creating a clip.",
@@ -60,8 +63,7 @@ namespace LittleBrushGames.Mcp.Modules.Timeline
                     }
                 }"),
                 Handler = Write,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Read(ToolContext ctx, CancellationToken ct)
         {

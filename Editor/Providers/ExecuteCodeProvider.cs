@@ -24,7 +24,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
     /// Every failure mode returns a structured envelope — never drops the bridge connection.
     /// </summary>
     [McpToolProvider]
-    public sealed class ExecuteCodeProvider : IToolProvider
+    public sealed class ExecuteCodeProvider : AttributedToolProvider
     {
         private const string SnippetSourceName = "snippet.cs";
         private const int UserCodeStartLine = 1;
@@ -35,11 +35,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
 
         private static IReadOnlyList<MetadataReference> s_references;
 
-        public string Namespace => "editor.code";
+        public override string Namespace => "editor.code";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorExecuteCode() =>
+            new ToolDescriptor
             {
                 Name = "editor.execute_code",
                 Description = "Unsandboxed last-resort Roslyn snippet runner governed by the local CodeExecution trust policy. Prefer typed tools whenever they cover the operation. Code runs with Unity's full user permissions; the request timeout cannot interrupt user code after invocation. Requires a reason documenting why no typed tool fits.",
@@ -64,8 +64,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Execute,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Execute(ToolContext ctx, CancellationToken ct)
         {

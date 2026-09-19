@@ -14,13 +14,13 @@ using UnityEngine;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class ScreenshotProvider : IToolProvider
+    public sealed class ScreenshotProvider : AttributedToolProvider
     {
-        public string Namespace => "editor.screenshot";
+        public override string Namespace => "editor.screenshot";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorScreenshot() =>
+            new ToolDescriptor
             {
                 Name = "editor.screenshot",
                 Description = "Capture a screenshot of the SceneView (edit/play) or GameView (play mode). Returns inline PNG via ImageContent. Args: { source?: 'SceneView'|'GameView', width?: int, height?: int }.",
@@ -36,9 +36,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = CaptureScreenshot,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorWindowScreenshot() =>
+            new ToolDescriptor
             {
                 Name = "editor.window_screenshot",
                 Description = "Capture a visible Unity EditorWindow by type name or title. Captures the full window by default; region optionally crops in window-local logical coordinates from the top-left. Background capture reuses an already open window. Creating a temporary floating window requires activate=true and can steal focus. Returns inline PNG and logical/physical bounds. Args: { windowType?: string, title?: string, openIfNeeded?: bool, waitFrames?: int, floating?: bool, activate?: bool, width?: int, height?: int, region?: { x, y, width, height } }.",
@@ -75,8 +77,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = CaptureWindowScreenshot,
-            });
-        }
+            };
 
         internal static ToolTrustCategory ResolveWindowScreenshotTrust(JObject arguments) =>
             arguments?["activate"]?.Value<bool>() == true

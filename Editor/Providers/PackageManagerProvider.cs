@@ -8,13 +8,13 @@ using UnityEditor.PackageManager.Requests;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class PackageManagerProvider : IToolProvider
+    public sealed class PackageManagerProvider : AttributedToolProvider
     {
-        public string Namespace => "package_manager";
+        public override string Namespace => "package_manager";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePackageManagerAdd() =>
+            new ToolDescriptor
             {
                 Name = "package_manager.add",
                 Description = "Add or update a Unity package dependency through Package Manager. Accepts registry package identifiers (optionally with a version), Git URLs, and local package paths supported by Client.Add.",
@@ -32,9 +32,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""additionalProperties"": false
                 }"),
                 Handler = Add,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribePackageManagerRemove() =>
+            new ToolDescriptor
             {
                 Name = "package_manager.remove",
                 Description = "Remove a direct Unity package dependency through Package Manager using its package name.",
@@ -53,8 +55,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""additionalProperties"": false
                 }"),
                 Handler = Remove,
-            });
-        }
+            };
 
         private static async ValueTask<ToolResult> Add(ToolContext ctx, CancellationToken ct)
         {

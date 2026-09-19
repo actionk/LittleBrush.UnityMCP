@@ -24,7 +24,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
     /// </summary>
     [McpToolProvider]
     [InitializeOnLoad]
-    public sealed class TestRunnerProvider : IToolProvider
+    public sealed class TestRunnerProvider : AttributedToolProvider
     {
         private const string SessionKeyPrefix = "McpTestRun_";
         private const string ActiveRunsKey = "McpTestRun_ActiveRunIds";
@@ -40,7 +40,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
         private static McpTestLogCapture s_editModeLogCapture;
         private static string s_editModeLogCaptureRunId;
 
-        public string Namespace => "tests";
+        public override string Namespace => "tests";
 
         static TestRunnerProvider()
         {
@@ -49,9 +49,10 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             EditorApplication.update += ReattachPendingRuns;
         }
 
-        public void RegisterTools(IToolRegistration reg)
+        [McpToolDeclaration]
+        private System.Collections.Generic.IEnumerable<ToolDescriptor> DescribeTools()
         {
-            reg.Register(new ToolDescriptor
+            yield return new ToolDescriptor
             {
                 Name = "tests.list",
                 Description = "Search and page test cases by mode, full-name substring, assembly, or category.",
@@ -71,7 +72,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                     }
                 }"),
                 Handler = ListTests,
-            });
+            };
 
             var testsRun = new ToolDescriptor
             {
@@ -97,9 +98,9 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 }"),
                 Handler = RunTests,
             };
-            reg.Register(testsRun);
+            yield return testsRun;
 
-            reg.Register(new ToolDescriptor
+            yield return new ToolDescriptor
             {
                 Name = "tests.runs",
                 TrustCategory = ToolTrustCategory.Read,
@@ -116,9 +117,9 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                     ["retentionLimit"] = RecentRunLimit,
                     ["scope"] = "editor_session",
                 })),
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+            yield return new ToolDescriptor
             {
                 Name = "tests.result",
                 ReloadSafe = true,
@@ -141,9 +142,9 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                     }
                 }"),
                 Handler = GetResult,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+            yield return new ToolDescriptor
             {
                 Name = "tests.cancel",
                 ExclusiveGroup = "test",
@@ -157,8 +158,8 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                     ""properties"": { ""runId"": { ""type"": ""string"", ""minLength"": 1 } }
                 }"),
                 Handler = CancelRun,
-            });
-        }
+            };
+                }
 
         // ─── List ───────────────────────────────────────────────
 

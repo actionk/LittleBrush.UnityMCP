@@ -38,21 +38,23 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             internal readonly Dictionary<(ulong, string), ProfilerMarkerTotals> Totals = new();
         }
 
-        private static void RegisterAnalysisTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor {
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProfilerFrames() =>
+            new ToolDescriptor {
                 Name = "profiler.frames", TrustCategory = ToolTrustCategory.EditorState, ExclusiveGroup = "profiler",
                 Description = "Find slow main-thread frames in a saved capture (512 MiB load limit). Returns capture-relative frame indexes for profiler.sample, sorted by duration. Reuses loaded data when valid. Native loading may evict earlier Profiler history.",
                 InputSchema = JObject.Parse(@"{'type':'object','additionalProperties':false,'properties':{'captureId':{'type':'string','minLength':32,'maxLength':32},'offset':{'type':'integer','minimum':0},'topN':{'type':'integer','minimum':1,'maximum':100}}}"),
                 Handler = Frames,
-            });
-            reg.Register(new ToolDescriptor {
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProfilerSample() =>
+            new ToolDescriptor {
                 Name = "profiler.sample", TrustCategory = ToolTrustCategory.EditorState, ExclusiveGroup = "profiler",
                 Description = "Inspect one CPU sample and page its direct children, sorted by duration. Use maxFrame/maxThreadIndex/maxSample from profiler.report, or frame from profiler.frames with threadIndex=0 and sample=0. Self time excludes direct children. Frame indexes are relative to retained capture history.",
                 InputSchema = JObject.Parse(@"{'type':'object','additionalProperties':false,'required':['captureId','frame'],'properties':{'captureId':{'type':'string','minLength':32,'maxLength':32},'frame':{'type':'integer','minimum':0},'threadIndex':{'type':'integer','minimum':0,'maximum':1023},'sample':{'type':'integer','minimum':0},'offset':{'type':'integer','minimum':0},'topN':{'type':'integer','minimum':1,'maximum':100}}}"),
                 Handler = Sample,
-            });
-        }
+            };
 
         internal static JObject StartExitCapture(ToolContext ctx)
         {

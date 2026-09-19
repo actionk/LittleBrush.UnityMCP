@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -19,6 +20,23 @@ namespace LittleBrushGames.Mcp.Editor
                          | BindingFlags.Instance | BindingFlags.Static).OrderBy(m => m.Name, StringComparer.Ordinal))
             {
                 var attribute = method.GetCustomAttribute<McpToolAttribute>();
+                if (method.IsDefined(typeof(McpToolDeclarationAttribute), false))
+                {
+                    if (attribute != null || method.ContainsGenericParameters || method.GetParameters().Length != 0
+                        || method.IsAbstract || (method.ReturnType != typeof(ToolDescriptor)
+                            && !typeof(IEnumerable<ToolDescriptor>).IsAssignableFrom(method.ReturnType)))
+                        throw new InvalidOperationException($"{method.Name}: declarations must be parameterless descriptor factories without McpTool.");
+                    object result;
+                    try { result = method.Invoke(method.IsStatic ? null : this, null); }
+                    catch (TargetInvocationException ex) when (ex.InnerException != null)
+                    { ExceptionDispatchInfo.Capture(ex.InnerException).Throw(); throw; }
+                    if (result is ToolDescriptor descriptor) registration.Register(descriptor);
+                    else if (result is IEnumerable<ToolDescriptor> descriptors)
+                        foreach (var item in descriptors)
+                            registration.Register(item ?? throw new InvalidOperationException($"{method.Name}: null descriptor."));
+                    else throw new InvalidOperationException($"{method.Name}: null declaration.");
+                    continue;
+                }
                 if (attribute != null) registration.Register(CreateDescriptor(method, attribute));
             }
         }

@@ -11,13 +11,13 @@ using UnityEngine.SceneManagement;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class ScenePreviewProvider : IToolProvider
+    public sealed class ScenePreviewProvider : AttributedToolProvider
     {
-        public string Namespace => "scene";
+        public override string Namespace => "scene";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeScenePreviewScreenshot() =>
+            new ToolDescriptor
             {
                 Name = "scene.preview_screenshot",
                 Description = "Edit Mode only: render a loaded or project scene GameObject without changing the loaded scene set. Uses a temporary camera copied from the gameplay camera, auto-frames renderer bounds, and returns an inline PNG. Supports isolation or scene context; never starts Play Mode.",
@@ -42,8 +42,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Capture,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Capture(ToolContext ctx, CancellationToken _)
         {

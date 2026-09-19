@@ -8,13 +8,13 @@ using UnityEngine;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class ProjectProvider : IToolProvider
+    public sealed class ProjectProvider : AttributedToolProvider
     {
-        public string Namespace => "project";
+        public override string Namespace => "project";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectPrefabInstantiate() =>
+            new ToolDescriptor
             {
                 Name = "project.prefab.instantiate",
                 Description = "Instantiate a prefab into the active scene at optional world position.",
@@ -29,26 +29,29 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Instantiate,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectGuidToPath() =>
+            new ToolDescriptor
             {
                 Name = "project.guid_to_path",
                 Description = "Resolve a GUID to an asset path.",
                 Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""required"": [""guid""], ""properties"": { ""guid"": { ""type"": ""string"" } } }"),
                 Handler = GuidToPath,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectPathToGuid() =>
+            new ToolDescriptor
             {
                 Name = "project.path_to_guid",
                 Description = "Resolve an asset path to a GUID.",
                 Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""required"": [""path""], ""properties"": { ""path"": { ""type"": ""string"" } } }"),
                 Handler = PathToGuid,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Instantiate(ToolContext ctx, CancellationToken __)
         {

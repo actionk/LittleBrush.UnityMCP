@@ -8,7 +8,7 @@ using UnityEngine;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class LogsProvider : IToolProvider
+    public sealed class LogsProvider : AttributedToolProvider
     {
         private static readonly LogRingBuffer s_buffer = new(
             Host.McpBridgeSettings.GetOrLoad()?.LogBufferSize ?? 1000);
@@ -87,11 +87,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             return true;
         }
 
-        public string Namespace => "editor.logs";
+        public override string Namespace => "editor.logs";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorLogsTail() =>
+            new ToolDescriptor
             {
                 Name = "editor.logs.tail",
                 Description = "Return the last N buffered log entries with optional substring and level filters.",
@@ -110,9 +110,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Tail,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeEditorLogsClear() =>
+            new ToolDescriptor
             {
                 Name = "editor.logs.clear",
                 Description = "Clear the log ring buffer.",
@@ -124,8 +126,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     s_buffer.Clear();
                     return new ValueTask<ToolResult>(ToolResult.Ok(new JObject { ["cleared"] = true }));
                 },
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Tail(ToolContext ctx, CancellationToken __)
             => new(ToolResult.Ok(CreateTailResponse(s_buffer.Snapshot(), ctx.Arguments)));

@@ -14,13 +14,13 @@ using UnityEngine.Profiling;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [InitializeOnLoad, McpToolProvider]
-    public sealed partial class ProfilerProvider : IToolProvider
+    public sealed partial class ProfilerProvider : AttributedToolProvider
     {
         private const string StateKey = "LittleBrushGames.Mcp.Profiler";
         private const long MaxFileBytes = 128L * 1024 * 1024;
         private static JObject state;
         private static double nextCheck;
-        public string Namespace => "profiler";
+        public override string Namespace => "profiler";
 
         static ProfilerProvider()
         {
@@ -36,28 +36,32 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             };
         }
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor {
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProfilerStart() =>
+            new ToolDescriptor {
                 Name = "profiler.start", TrustCategory = ToolTrustCategory.EditorState, ExclusiveGroup = "profiler",
                 Description = "Start a local Editor CPU binary capture (default 10s, max 60s). Memory module and allocation call stacks are off by default; no snapshots. Refuses existing recordings and deep profiling. Returns immediately so you can exercise the Editor. Stops automatically on Editor update, size limit or reload and restores settings. Raw data stays in Library/McpProfiler.",
                 InputSchema = JObject.Parse(@"{'type':'object','additionalProperties':false,'properties':{'durationSeconds':{'type':'number','minimum':1,'maximum':60},'includeMemory':{'type':'boolean'}}}"),
                 Handler = Start,
-            });
-            reg.Register(new ToolDescriptor {
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProfilerStop() =>
+            new ToolDescriptor {
                 Name = "profiler.stop", TrustCategory = ToolTrustCategory.EditorState, ExclusiveGroup = "profiler", ReloadSafe = true,
                 Description = "Stop and flush the current MCP capture, restore profiler settings, and return its captureId/rawPath. Safe to repeat after automatic stop. Never stops a recording not owned by MCP.",
                 InputSchema = JObject.Parse(@"{'type':'object','additionalProperties':false,'properties':{}}"),
                 Handler = (ctx, ct) => { Finish("requested"); return new(ToolResult.Ok(Summary())); },
-            });
-            reg.Register(new ToolDescriptor {
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProfilerReport() =>
+            new ToolDescriptor {
                 Name = "profiler.report", TrustCategory = ToolTrustCategory.EditorState, ExclusiveGroup = "profiler", Execution = ToolExecution.Async,
                 Description = "Search cached CPU aggregates by capture, thread, marker and time interval. First analysis loads raw data into Profiler history (up to 512 MiB); subsequent marker/sort/page queries reuse a disk cache. Partial analysis returns a cursor: repeat the same capture/thread/time query with that cursor. Inclusive rows overlap; gaps are elapsed time, not CPU work. maxFrame/maxSample locate the slowest occurrence for profiler.sample. Coverage is the retained Unity history, which may be a suffix of the raw file.",
                 InputSchema = JObject.Parse(@"{'type':'object','additionalProperties':false,'properties':{'captureId':{'type':'string','minLength':32,'maxLength':32},'thread':{'type':'string','maxLength':200},'marker':{'type':'string','maxLength':200},'fromMs':{'type':'number','minimum':0},'toMs':{'type':'number','minimum':0},'cursor':{'type':'string','maxLength':32},'budgetMs':{'type':'integer','minimum':1,'maximum':5000},'offset':{'type':'integer','minimum':0},'topN':{'type':'integer','minimum':1,'maximum':100},'sortBy':{'enum':['selfMs','inclusiveMs','maxMs','calls','gapMs']}}}"),
                 Handler = QueryReport,
-            });
-            RegisterAnalysisTools(reg);
-        }
+            };
 
         private static string DirectoryPath => Path.GetFullPath("Library/McpProfiler");
         private static void SaveState() => SessionState.SetString(StateKey, state.ToString(Newtonsoft.Json.Formatting.None));

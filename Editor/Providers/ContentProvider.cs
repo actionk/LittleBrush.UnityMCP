@@ -12,15 +12,15 @@ using UnityEditor;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class ContentProvider : IToolProvider
+    public sealed class ContentProvider : AttributedToolProvider
     {
         private const string Root = "Assets/Resources/Content";
 
-        public string Namespace => "content";
+        public override string Namespace => "content";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeContentStatus() =>
+            new ToolDescriptor
             {
                 Name = "content.status",
                 Description = "Report JsonContentManager availability, load state, and source JSON file count.",
@@ -28,8 +28,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Handler = Status,
                 InputSchema = new JObject { ["type"] = "object" },
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeContentRead() =>
+            new ToolDescriptor
             {
                 Name = "content.read",
                 Description = "Read one source JSON file through a compact, paged projection with a concurrency hash. Defaults to child summaries; use pointer plus detail=full for targeted values.",
@@ -47,8 +50,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeContentWrite() =>
+            new ToolDescriptor
             {
                 Name = "content.write",
                 Description = "Create or replace one source content JSON file with expectedHash concurrency, dryRun, generated-file protection, and automatic reindex scheduling.",
@@ -64,8 +70,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Annotations = new JObject { ["destructiveHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeContentReindex() =>
+            new ToolDescriptor
             {
                 Name = "content.reindex",
                 Description = "Rebuild JsonContentManager's index and wait until the Editor reloads it.",
@@ -74,16 +83,18 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Timeout = TimeSpan.FromMinutes(2),
                 Handler = Reindex,
                 InputSchema = new JObject { ["type"] = "object" },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeContentReload() =>
+            new ToolDescriptor
             {
                 Name = "content.reload",
                 Description = "Reload JsonContentManager's current index and content in the Editor.",
                 Availability = ToolAvailability.EditMode,
                 Handler = Reload,
                 InputSchema = new JObject { ["type"] = "object" },
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Status(ToolContext ctx, CancellationToken ct)
         {

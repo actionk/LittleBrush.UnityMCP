@@ -11,15 +11,15 @@ using UnityEngine.Rendering;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class MaterialProvider : IToolProvider
+    public sealed class MaterialProvider : AttributedToolProvider
     {
         private const int DefaultPageSize = 25;
 
-        public string Namespace => "material";
+        public override string Namespace => "material";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeMaterialRead() =>
+            new ToolDescriptor
             {
                 Name = "material.read",
                 Description = "Read a material's shader, keywords, render queue, and paged shader properties with a concurrency hash. Properties default to 25; descriptions are opt-in.",
@@ -35,8 +35,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 }"),
                 Handler = Read,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeMaterialWrite() =>
+            new ToolDescriptor
             {
                 Name = "material.write",
                 Description = "Set material shader, keywords, renderQueue, and shader properties with expectedHash and dryRun validation.",
@@ -54,8 +57,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Write,
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeShaderInspect() =>
+            new ToolDescriptor
             {
                 Name = "shader.inspect",
                 Description = "Inspect a Shader asset's name plus paged properties and compiler messages. Each page defaults to 25; property descriptions are opt-in.",
@@ -73,8 +79,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 }"),
                 Handler = InspectShader,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Read(ToolContext ctx, CancellationToken ct)
         {

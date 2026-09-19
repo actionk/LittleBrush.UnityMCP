@@ -14,22 +14,24 @@ using UnityEngine.SceneManagement;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class SceneProvider : IToolProvider
+    public sealed class SceneProvider : AttributedToolProvider
     {
-        public string Namespace => "scene";
+        public override string Namespace => "scene";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeSceneList() =>
+            new ToolDescriptor
             {
                 Name = "scene.list",
                 Description = "List loaded scenes.",
                 Availability = ToolAvailability.Either,
                 InputSchema = new JObject { ["type"] = "object" },
                 Handler = ListScenes,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeSceneRequestOpen() =>
+            new ToolDescriptor
             {
                 Name = "scene.request_open",
                 Description = "Open a scene in Edit Mode under the local EditorState trust policy. Replacing dirty loaded scenes is governed separately by UnsavedWork.",
@@ -47,9 +49,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = RequestOpenScene,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeSceneRead() =>
+            new ToolDescriptor
             {
                 Name = "scene.read",
                 Description = "Read a loaded or project scene hierarchy without changing the loaded scene set. Defaults to a sparse outline without components; request full profile or targeted component properties only when needed.",
@@ -73,9 +77,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = ReadScene,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeSceneFind() =>
+            new ToolDescriptor
             {
                 Name = "scene.find",
                 Description = "Find GameObjects in a loaded or project scene by name, path, tag, or component type without changing the loaded scene set. Returns compact path + entity ID results.",
@@ -95,9 +101,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = FindObjects,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeSceneReadObject() =>
+            new ToolDescriptor
             {
                 Name = "scene.read_object",
                 Description = "Read one GameObject subtree from a loaded or project scene without changing the loaded scene set. Defaults to a sparse outline with component descriptors; serialized properties are opt-in, filterable, and paged.",
@@ -123,9 +131,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = ReadObject,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeSceneWrite() =>
+            new ToolDescriptor
             {
                 Name = "scene.write",
                 Description = "Apply one transactional GameObject batch. Existing scenes require expectedHash from scene.read; dirty loaded scenes are rejected to protect unsaved work. Explicit unloaded scenePath values are opened additively only for this call, saved, and closed with the prior active scene restored. createIfMissing creates a new scene through this same tool. Mutating ops accept path or entityId. Op types: create_gameobject, delete_gameobject, rename_gameobject, set_active, set_transform, reparent, add_component, remove_component, set_property, instantiate_prefab.",
@@ -142,9 +152,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = WriteScene,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeSceneReplaceId() =>
+            new ToolDescriptor
             {
                 Name = "scene.replace_id",
                 Description = "Find exact serialized string values and authored object references matching an ID across a loaded or project scene. Existing scene writes require expectedHash from scene.read; dirty loaded scenes are rejected. Unloaded scene writes open additively for this call, save, and close.",
@@ -163,9 +175,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = ReplaceId,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeSceneSave() =>
+            new ToolDescriptor
             {
                 Name = "scene.save",
                 Description = "Save the active or specified loaded scene. Transient unloaded-scene writes save within scene.write or scene.replace_id.",
@@ -175,8 +189,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""properties"": { ""scenePath"": { ""type"": ""string"" } }
                 }"),
                 Handler = SaveScene,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> ListScenes(ToolContext _, CancellationToken __)
         {

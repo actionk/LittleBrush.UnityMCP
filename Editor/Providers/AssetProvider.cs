@@ -18,18 +18,18 @@ namespace LittleBrushGames.Mcp.Editor.Providers
     /// Every path argument is validated project-relative and constrained to Assets/ or Packages/.
     /// </summary>
     [McpToolProvider]
-    public sealed class AssetProvider : IToolProvider
+    public sealed class AssetProvider : AttributedToolProvider
     {
         private static readonly HashSet<string> CompilationExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
             ".asmdef", ".asmref", ".cs", ".dll", ".rsp",
         };
 
-        public string Namespace => "asset";
+        public override string Namespace => "asset";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetFind() =>
+            new ToolDescriptor
             {
                 Name = "asset.find",
                 Description = "Find assets by type, optional folder scope, and optional label. Returns path + guid + type. Paginated via cursor. Preferred over execute_code+AssetDatabase.FindAssets.",
@@ -47,9 +47,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Find,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetCreateFolder() =>
+            new ToolDescriptor
             {
                 Name = "asset.create_folder",
                 Description = "Create a folder under Assets/ or Packages/ if it does not already exist. Idempotent.",
@@ -65,9 +67,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""additionalProperties"": false
                 }"),
                 Handler = CreateFolder,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetCopy() =>
+            new ToolDescriptor
             {
                 Name = "asset.copy",
                 Description = "Copy an asset via AssetDatabase.CopyAsset. Safer than Instantiate+SaveAsPrefabAsset — does not touch the scene. Compilation inputs require Edit Mode.",
@@ -84,9 +88,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""additionalProperties"": false
                 }"),
                 Handler = Copy,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetMove() =>
+            new ToolDescriptor
             {
                 Name = "asset.move",
                 Description = "Move or rename an asset via AssetDatabase.MoveAsset. Compilation inputs require Edit Mode.",
@@ -102,9 +108,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""additionalProperties"": false
                 }"),
                 Handler = Move,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetDelete() =>
+            new ToolDescriptor
             {
                 Name = "asset.delete",
                 Description = "Delete one or more assets. Returns paths that were deleted and those that did not exist. Compilation inputs require Edit Mode.",
@@ -119,9 +127,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""additionalProperties"": false
                 }"),
                 Handler = Delete,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetImport() =>
+            new ToolDescriptor
             {
                 Name = "asset.import",
                 Description = "Reimport one or more assets in a single StartAssetEditing/StopAssetEditing envelope so the cost is amortised. Compilation inputs require Edit Mode.",
@@ -137,9 +147,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""additionalProperties"": false
                 }"),
                 Handler = Import,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetSubassetsList() =>
+            new ToolDescriptor
             {
                 Name = "asset.subassets.list",
                 Description = "Page the main asset and imported sub-assets at a path. Use localId with the source path for exact follow-up operations.",
@@ -157,9 +169,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = ListSubAssets,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeAssetAnimationClipExtract() =>
+            new ToolDescriptor
             {
                 Name = "asset.animation_clip.extract",
                 Description = "Copy an imported AnimationClip sub-asset (for example from an FBX) into a standalone project-owned .anim asset.",
@@ -177,8 +191,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = ExtractAnimationClip,
-            });
-        }
+            };
 
         // ---- Handlers --------------------------------------------------------
 

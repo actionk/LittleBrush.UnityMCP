@@ -19,16 +19,16 @@ using Object = UnityEngine.Object;
 namespace LittleBrushGames.Mcp.Modules.VisualEffectGraph
 {
     [McpToolProvider]
-    public sealed class VisualEffectGraphProvider : IToolProvider
+    public sealed class VisualEffectGraphProvider : AttributedToolProvider
     {
         private const int MaxDocumentCharacters = 2 * 1024 * 1024;
         private static readonly VfxApi Api = new();
 
-        public string Namespace => "vfx";
+        public override string Namespace => "vfx";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeVfxCatalog() =>
+            new ToolDescriptor
             {
                 Name = "vfx.catalog",
                 Description = "Search the live Visual Effect Graph node/type catalog. Returns descriptors accepted by vfx.graph.write.",
@@ -45,9 +45,11 @@ namespace LittleBrushGames.Mcp.Modules.VisualEffectGraph
                 }"),
                 Handler = Catalog,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeVfxGraphRead() =>
+            new ToolDescriptor
             {
                 Name = "vfx.graph.read",
                 Description = "Read a .vfx asset as normalized JSON, including contexts, blocks, operators, parameters, settings, values, links, notes, groups, layout, and an optimistic hash.",
@@ -55,9 +57,11 @@ namespace LittleBrushGames.Mcp.Modules.VisualEffectGraph
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""required"": [""path""], ""properties"": { ""path"": { ""type"": ""string"" }, ""profile"": { ""type"": ""string"", ""enum"": [""outline"", ""topology"", ""full""] } } }"),
                 Handler = Read,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeVfxGraphWrite() =>
+            new ToolDescriptor
             {
                 Name = "vfx.graph.write",
                 Description = "Validate, compile, and transactionally replace a complete .vfx graph from normalized JSON. Existing assets require expectedHash. Supports dryRun; custom HLSL requires allowCustomHlsl=true.",
@@ -76,8 +80,7 @@ namespace LittleBrushGames.Mcp.Modules.VisualEffectGraph
                     }
                 }"),
                 Handler = Write,
-            });
-        }
+            };
 
         private static ValueTask<ToolResult> Catalog(ToolContext ctx, CancellationToken _)
         {

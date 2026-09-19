@@ -2,6 +2,10 @@ using System;
 
 namespace LittleBrushGames.Mcp.Editor
 {
+    /// <summary>Declares a parameterless ToolDescriptor factory, or a sequence of related descriptors.</summary>
+    [AttributeUsage(AttributeTargets.Method, Inherited = false)]
+    public sealed class McpToolDeclarationAttribute : Attribute { }
+
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     public sealed class McpToolAttribute : Attribute
     {

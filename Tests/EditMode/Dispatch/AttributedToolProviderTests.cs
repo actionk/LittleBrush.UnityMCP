@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -55,6 +56,69 @@ namespace LittleBrushGames.Mcp.Tests.Dispatch
             public ToolTrustCategory Seen;
             public ValueTask AuthorizeAsync(ToolDescriptor tool, JObject args, CancellationToken ct)
             { Seen = tool.TrustCategory; throw new McpToolException(McpErrorCodes.ValidationFailed, "Denied"); }
+        }
+
+        private sealed class DeclarationProvider : AttributedToolProvider
+        {
+            public override string Namespace => "declaration";
+            public bool Fail;
+            public int Calls;
+            public readonly ToolDescriptor Descriptor = new()
+            {
+                Name = "declaration.run", Description = "Preserve the entire custom contract.",
+                InputSchema = JObject.Parse("{'type':'object','properties':{'dryRun':{'type':'boolean'}}}"),
+                OutputSchema = JObject.Parse("{'type':'object'}"),
+                Annotations = new JObject { ["idempotentHint"] = true },
+                TrustCategoryResolver = args => (bool?)args["dryRun"] == true ? ToolTrustCategory.Read : ToolTrustCategory.ProjectWrite,
+                BackgroundOperationActive = () => false,
+                Execution = ToolExecution.LongRunning, Availability = ToolAvailability.Always,
+                RequiresMainThread = false, RequiresWriterLease = false, ReloadSafe = true,
+                Timeout = TimeSpan.FromSeconds(7), ExclusiveGroup = "declarations",
+                Handler = (_, _) => new ValueTask<ToolResult>(ToolResult.Ok(new JObject { ["ok"] = true })),
+            };
+
+            [McpToolDeclaration]
+            private ToolDescriptor Single() { Calls++; return Descriptor; }
+
+            [McpToolDeclaration]
+            private IEnumerable<ToolDescriptor> Sequence()
+            {
+                yield return new ToolDescriptor { Name = "declaration.other", InputSchema = new JObject(), Handler = Descriptor.Handler };
+                if (Fail) throw new InvalidOperationException("Declaration failed");
+            }
+        }
+
+        private sealed class InvalidDeclarationProvider : AttributedToolProvider
+        {
+            public override string Namespace => "invalid";
+            [McpToolDeclaration]
+            private ToolDescriptor Invalid(string argument) => throw new Exception("Must never invoke");
+        }
+
+        [Test]
+        public async Task DeclarationsPreserveCustomContractsAndBindHandlersOnlyOnce()
+        {
+            var provider = new DeclarationProvider(); var registry = Registry(provider);
+            Assert.That(registry.Errors, Is.Empty);
+            Assert.That(registry.Enumerate().Count(), Is.EqualTo(2));
+            Assert.That(registry.TryGet("declaration.run", out var descriptor), Is.True);
+            Assert.That(descriptor, Is.SameAs(provider.Descriptor));
+            var result = await Dispatcher(registry).DispatchAsync("declaration.run", new JObject(), "declared", CancellationToken.None);
+            Assert.That(result.Error, Is.Null);
+            Assert.That((bool)result.Value.StructuredContent["ok"], Is.True);
+            Assert.That(provider.Calls, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void FailedOrInvalidDeclarationsRejectTheWholeProvider()
+        {
+            var registry = new ToolRegistry();
+            registry.SetEditorProviders(new IToolProvider[] { new SampleProvider(), new DeclarationProvider { Fail = true }, new InvalidDeclarationProvider() });
+            Assert.That(registry.Errors.Count, Is.EqualTo(2));
+            Assert.That(registry.Errors.Any(e => e.Contains("Declaration failed")), Is.True);
+            Assert.That(registry.Errors.Any(e => e.Contains("parameterless descriptor factories")), Is.True);
+            Assert.That(registry.Enumerate().Any(t => t.Name.StartsWith("declaration.")), Is.False);
+            Assert.That(registry.TryGet("sample.run", out _), Is.True);
         }
 
         private static ToolRegistry Registry(IToolProvider provider)

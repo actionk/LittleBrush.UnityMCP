@@ -14,13 +14,13 @@ using UnityEngine;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class AssetsProvider : IToolProvider
+    public sealed class AssetsProvider : AttributedToolProvider
     {
-        public string Namespace => "project.assets";
+        public override string Namespace => "project.assets";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectAssetsRead() =>
+            new ToolDescriptor
             {
                 Name = "project.assets.read",
                 Description = "Return asset or selected sub-asset metadata and an optional filtered page of serialized properties. Pass localId from asset.subassets.list to select a sub-asset. Properties are omitted unless explicitly requested.",
@@ -44,9 +44,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Read,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectAssetsOpen() =>
+            new ToolDescriptor
             {
                 Name = "project.assets.open",
                 Description = "Select and ping an asset in the Project window.",
@@ -57,9 +59,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ""properties"": { ""path"": { ""type"": ""string"" } }
                 }"),
                 Handler = Open,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectAssetsWrite() =>
+            new ToolDescriptor
             {
                 Name = "project.assets.write",
                 Description = "Set serialized properties on an asset or selected sub-asset with optimistic concurrency. Pass localId from project.assets.read or asset.subassets.list to select a sub-asset. Requires expectedHash from project.assets.read; supports dryRun.",
@@ -77,9 +81,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Write,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectAssetsCreate() =>
+            new ToolDescriptor
             {
                 Name = "project.assets.create",
                 Description = "Create a ScriptableObject asset by concrete type and optionally set serialized properties. Supports dryRun.",
@@ -96,18 +102,22 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Create,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectImporterRead() =>
+            new ToolDescriptor
             {
                 Name = "project.importer.read",
                 Description = "Read a filtered page of serialized AssetImporter properties.",
                 Availability = ToolAvailability.Either,
                 InputSchema = PropertyReadSchema(),
                 Handler = ReadImporter,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectImporterWrite() =>
+            new ToolDescriptor
             {
                 Name = "project.importer.write",
                 Description = "Set one AssetImporter with expectedHash concurrency and dryRun validation; then reimport once. Use project.importer.write_many for multiple assets.",
@@ -122,9 +132,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = WriteImporter,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectImporterWriteMany() =>
+            new ToolDescriptor
             {
                 Name = "project.importer.write_many",
                 Description = "Batch different serialized AssetImporter changes with per-asset expectedHash values in one StartAssetEditing/StopAssetEditing envelope.",
@@ -147,9 +159,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = WriteImporters,
-            });
+            };
 
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectSettingsList() =>
+            new ToolDescriptor
             {
                 Name = "project.settings.list",
                 Description = "Page serialized Unity ProjectSettings assets (tags/layers, physics, graphics, quality, navigation, and more).",
@@ -157,8 +171,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 InputSchema = JObject.Parse(@"{ ""type"": ""object"", ""properties"": { ""includeHashes"": { ""type"": ""boolean"", ""description"": ""Include per-file concurrency hashes; omitted/false keeps discovery compact."" }, ""offset"": { ""type"": ""integer"", ""minimum"": 0 }, ""limit"": { ""type"": ""integer"", ""minimum"": 1, ""maximum"": 1000, ""description"": ""Page size. Default 25."" } } }"),
                 Handler = ListProjectSettings,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectSettingsRead() =>
+            new ToolDescriptor
             {
                 Name = "project.settings.read",
                 Description = "Read a filtered page of serialized properties and a concurrency hash from one ProjectSettings asset.",
@@ -166,8 +183,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 InputSchema = PropertyReadSchema(),
                 Handler = ReadProjectSettings,
                 Annotations = new JObject { ["readOnlyHint"] = true },
-            });
-            reg.Register(new ToolDescriptor
+            };
+
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeProjectSettingsWrite() =>
+            new ToolDescriptor
             {
                 Name = "project.settings.write",
                 Description = "Set serialized ProjectSettings properties with expectedHash and dryRun validation.",
@@ -182,8 +202,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = WriteProjectSettings,
-            });
-        }
+            };
 
         private static JObject PropertyReadSchema()
             => JObject.Parse(@"{

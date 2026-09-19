@@ -11,13 +11,13 @@ using UnityEngine.UIElements;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class UiPreviewProvider : IToolProvider
+    public sealed class UiPreviewProvider : AttributedToolProvider
     {
-        public string Namespace => "ui";
+        public override string Namespace => "ui";
 
-        public void RegisterTools(IToolRegistration reg)
-        {
-            reg.Register(new ToolDescriptor
+        [McpToolDeclaration]
+        private ToolDescriptor DescribeUiPreviewScreenshot() =>
+            new ToolDescriptor
             {
                 Name = "ui.preview_screenshot",
                 Description = "Render a UI Toolkit UXML asset offscreen in Edit Mode and return an inline PNG. Uses Unity's VisualTreeAsset preview renderer first, then falls back to an offscreen PanelSettings target. Args: { uxmlPath: string, styleSheetPaths?: string[], panelSettingsPath?: string, width?: int, height?: int, waitFrames?: int }.",
@@ -39,8 +39,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     }
                 }"),
                 Handler = Capture,
-            });
-        }
+            };
 
         private static async ValueTask<ToolResult> Capture(ToolContext ctx, CancellationToken ct)
         {
