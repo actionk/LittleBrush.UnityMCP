@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using LittleBrushGames.Mcp.Editor.Dispatch;
 using LittleBrushGames.Mcp.Editor.Providers;
 using Newtonsoft.Json.Linq;
@@ -30,6 +32,37 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             Assert.That(tool.RequiresMainThread, Is.False);
             Assert.That(tool.TrustCategory, Is.EqualTo(ToolTrustCategory.ProjectWrite));
             Assert.That(tool.ReloadSafe, Is.False);
+            Assert.That(tool.Execution, Is.EqualTo(ToolExecution.Async));
+            Assert.That(tool.RequiresWriterLease, Is.True);
+            Assert.That((bool)tool.Annotations["destructiveHint"], Is.False);
+            var expected = JObject.Parse(@"{
+                'type':'object','additionalProperties':false,
+                'required':['capability','task','missing','checkedTools','workaround','benefit'],
+                'properties':{
+                    'capability':{'type':'string','minLength':3,'maxLength':80,'description':'Stable operation key, e.g. scene.preview.camera-pose. Reuse an existing key when applicable.'},
+                    'task':{'type':'string','minLength':1,'maxLength':1000},
+                    'missing':{'type':'string','minLength':1,'maxLength':1000},
+                    'checkedTools':{'type':'string','minLength':1,'maxLength':1000,'description':'Live registry search/tools checked and the specific mismatch.'},
+                    'workaround':{'type':'string','minLength':1,'maxLength':1000,'description':'Actual fallback or none available; do not paste credentials or full payloads.'},
+                    'benefit':{'type':'string','minLength':1,'maxLength':1000,'description':'Expected fewer calls, tokens, response bytes, or code. Distinguish measurements from estimates.'}
+                }}");
+            Assert.That(JToken.DeepEquals(tool.InputSchema, expected), Is.True, "The pilot must preserve its complete existing input contract.");
+        }
+
+        [Test]
+        public async Task AttributedAsyncHandlerWritesAndMergesThroughExistingStorage()
+        {
+            var registry = new ToolRegistry();
+            registry.SetEditorProviders(new IToolProvider[] { new FeatureRequestProvider(FilePath) });
+            Assert.That(registry.Errors, Is.Empty);
+            Assert.That(registry.TryGet("mcp.feature_request", out var tool), Is.True);
+            var context = new ToolContext(Request(), null, null, null, null, null, "pilot");
+            var first = await tool.Handler(context, CancellationToken.None);
+            var second = await tool.Handler(context, CancellationToken.None);
+            Assert.That((bool)first.StructuredContent["merged"], Is.False);
+            Assert.That((bool)second.StructuredContent["merged"], Is.True);
+            Assert.That((long)second.StructuredContent["submissions"], Is.EqualTo(2));
+            Assert.That(File.Exists(FilePath), Is.True);
         }
 
         [Test]

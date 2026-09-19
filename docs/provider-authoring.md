@@ -1,6 +1,6 @@
 # Authoring MCP Tools
 
-A tool provider is any class that implements `LittleBrushGames.Mcp.IToolProvider`. Editor providers additionally carry the `[McpToolProvider]` attribute so the plugin's discovery scan instantiates them on editor load.
+Editor providers carry `[McpToolProvider]` so discovery instantiates them on load. For ordinary typed methods, inherit `AttributedToolProvider` and add `[McpTool]`; it implements the existing `IToolProvider` contract. Manual `IToolProvider.RegisterTools` remains available for complex schemas and lifecycle hooks. Both routes produce the same `ToolDescriptor` and use the same dispatcher, trust checks, queues and gateway.
 
 ## Non-disruptive automation
 
@@ -12,36 +12,63 @@ Give agents the capabilities needed to complete their work while minimizing disr
 - Tests of data or rendering should use the underlying APIs. Show a window only for behavior that genuinely requires a displayed UI, and close only the window created by that test in guaranteed cleanup.
 - Verify both the result and preservation of user-owned Editor state. Quiet operation must not reduce capability, hide failures, or bypass trust and consent rules.
 
-## Minimal example
+## Attribute-based registration
 
 ```csharp
-using System.Threading;
-using System.Threading.Tasks;
 using LittleBrushGames.Mcp;
 using LittleBrushGames.Mcp.Editor;
 using Newtonsoft.Json.Linq;
 
 [McpToolProvider]
-public sealed class HelloProvider : IToolProvider
+public sealed class HelloProvider : AttributedToolProvider
 {
-    public string Namespace => "hello";
+    public override string Namespace => "hello";
 
-    public void RegisterTools(IToolRegistration reg)
-    {
-        reg.Register(new ToolDescriptor
-        {
-            Name = "hello.greet",
-            Description = "Returns a friendly greeting.",
-            InputSchema = new JObject { ["type"] = "object" },
-            Availability = ToolAvailability.Either,
-            Handler = Greet,
-        });
-    }
-
-    private static ValueTask<ToolResult> Greet(ToolContext ctx, CancellationToken ct)
-        => new(ToolResult.Ok(new JObject { ["greeting"] = "hi" }));
+    [McpTool("hello.greet", "Return a greeting.", ToolTrustCategory.Read,
+        Availability = ToolAvailability.Either,
+        RequiresMainThread = false, RequiresWriterLease = false)]
+    private static JObject Greet([McpParameter(MaxLength = 80)] string name = "World")
+        => new() { ["greeting"] = "Hello, " + name };
 }
 ```
+
+Only explicitly attributed methods are exported; their ordinary C# visibility does not grant MCP
+access. Discovery and method/parameter reflection happen during registration, not on each request.
+Invocation uses the cached method metadata. Names and parameter names are the external contract;
+rename them intentionally with their callers. Duplicate names and unsupported signatures reject the
+whole provider through the existing registry diagnostics, leaving healthy providers available.
+
+- Specify a tool name, description and explicit `ToolTrustCategory` (`Auto` is rejected). Availability
+  defaults to Edit Mode, main-thread execution and writer ownership remain enabled, and reload replay
+  is disabled by default. Opt out only where the operation's contract permits it.
+- Parameters support `string`, `bool`, `int`, `long`, `float`, `double`, ordinary named enums,
+  nullable value types and one-dimensional arrays. Non-finite numbers and conversion overflow are
+  rejected. Flags enums, Unity object/component arguments, dictionaries, arbitrary DTOs, generics,
+  ref/out parameters and other complex contracts use manual registration in this first version.
+- C# optional defaults make parameters optional. Explicit null is accepted for nullable types and
+  parameters whose default is null. Unknown JSON properties and coercions such as strings to numbers
+  are rejected. `ToolContext` and `CancellationToken` are injected and never exposed as user arguments.
+- `[McpParameter]` supplies descriptions, length/item limits and numeric bounds. Strings default to
+  at most 2,000 characters and arrays to 1,000 items; override for a documented bounded use case.
+  Contradictory limits, constraints on the wrong type and invalid defaults reject registration.
+- Return `JObject` or `ToolResult`, synchronously or as `Task<T>` / `ValueTask<T>`. Async execution
+  metadata is inferred. Build compact results explicitly; arbitrary object graphs are not serialized
+  automatically. Original exceptions and cancellation propagate to the normal dispatcher.
+- Attributes describe access and signatures; methods still own validation, cancellation, Undo,
+  transactions, preservation of user-owned state and result semantics. Destructive hints default to
+  true for non-read operations; explicitly declare a non-destructive write when appropriate.
+
+`FeatureRequestProvider` is the first migrated provider. Its existing tool name, full input schema,
+policy and storage behavior are preserved. Subsequent migrations should compare old/new descriptors
+and exercise the existing behavior before removing manual registration. Do not expose arbitrary
+class/method invocation or generate unbounded discovery responses.
+
+## Manual registration
+
+Use `IToolProvider.RegisterTools` and `registration.Register(new ToolDescriptor { ... })` for
+contracts needing custom object schemas, dynamic trust resolution, background-operation probes or
+other descriptor behavior not represented by the attributes. Attribute and manual providers coexist;
+no second gateway, compatibility alias or global migration is required.
 
 ## Tool descriptor
 

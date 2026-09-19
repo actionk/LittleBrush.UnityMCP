@@ -10,39 +10,34 @@ using UnityEngine;
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
     [McpToolProvider]
-    public sealed class FeatureRequestProvider : IToolProvider
+    public sealed class FeatureRequestProvider : AttributedToolProvider
     {
         internal const int MaxRequests = 256;
         private const int MaxFileBytes = 8 * 1024 * 1024;
         private static readonly object s_gate = new();
-        public string Namespace => "mcp";
+        public override string Namespace => "mcp";
 
-        public void RegisterTools(IToolRegistration reg)
+        // Capture Unity's project path during provider creation on the main thread.
+        private readonly string _path;
+        public FeatureRequestProvider() : this(Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Logs", "McpUsage", "feature-requests.json"))) { }
+        internal FeatureRequestProvider(string path) => _path = path;
+
+        [McpTool("mcp.feature_request",
+            "Submit local capability feedback after checking the live tool registry. Reuse the capability key to merge reports; counts are submissions, not distinct agents. Include the task, missing operation, checked tools and why they do not fit, workaround, and expected benefit (label unmeasured savings as estimates). This records a proposal, not approval to implement. Saved in Logs/McpUsage/feature-requests.json; no external service is contacted.",
+            ToolTrustCategory.ProjectWrite, Availability = ToolAvailability.Either,
+            RequiresMainThread = false, DestructiveHint = false)]
+        private Task<JObject> Record(
+            [McpParameter(MinLength = 3, MaxLength = 80, Description = "Stable operation key, e.g. scene.preview.camera-pose. Reuse an existing key when applicable.")] string capability,
+            [McpParameter(MinLength = 1, MaxLength = 1000)] string task,
+            [McpParameter(MinLength = 1, MaxLength = 1000)] string missing,
+            [McpParameter(MinLength = 1, MaxLength = 1000, Description = "Live registry search/tools checked and the specific mismatch.")] string checkedTools,
+            [McpParameter(MinLength = 1, MaxLength = 1000, Description = "Actual fallback or none available; do not paste credentials or full payloads.")] string workaround,
+            [McpParameter(MinLength = 1, MaxLength = 1000, Description = "Expected fewer calls, tokens, response bytes, or code. Distinguish measurements from estimates.")] string benefit,
+            CancellationToken cancellation)
         {
-            var path = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Logs", "McpUsage", "feature-requests.json"));
-            reg.Register(new ToolDescriptor
-            {
-                Name = "mcp.feature_request",
-                Description = "Submit local capability feedback after checking the live tool registry. Reuse the capability key to merge reports; counts are submissions, not distinct agents. Include the task, missing operation, checked tools and why they do not fit, workaround, and expected benefit (label unmeasured savings as estimates). This records a proposal, not approval to implement. Saved in Logs/McpUsage/feature-requests.json; no external service is contacted.",
-                Availability = ToolAvailability.Either,
-                RequiresMainThread = false,
-                Execution = ToolExecution.Async,
-                TrustCategory = ToolTrustCategory.ProjectWrite,
-                Annotations = new JObject { ["readOnlyHint"] = false, ["destructiveHint"] = false, ["idempotentHint"] = false },
-                InputSchema = JObject.Parse(@"{
-                    'type': 'object', 'additionalProperties': false,
-                    'required': ['capability', 'task', 'missing', 'checkedTools', 'workaround', 'benefit'],
-                    'properties': {
-                        'capability': {'type':'string', 'minLength':3, 'maxLength':80, 'description':'Stable operation key, e.g. scene.preview.camera-pose. Reuse an existing key when applicable.'},
-                        'task': {'type':'string', 'minLength':1, 'maxLength':1000},
-                        'missing': {'type':'string', 'minLength':1, 'maxLength':1000},
-                        'checkedTools': {'type':'string', 'minLength':1, 'maxLength':1000, 'description':'Live registry search/tools checked and the specific mismatch.'},
-                        'workaround': {'type':'string', 'minLength':1, 'maxLength':1000, 'description':'Actual fallback or none available; do not paste credentials or full payloads.'},
-                        'benefit': {'type':'string', 'minLength':1, 'maxLength':1000, 'description':'Expected fewer calls, tokens, response bytes, or code. Distinguish measurements from estimates.'}
-                    }
-                }"),
-                Handler = (ctx, ct) => new ValueTask<ToolResult>(Task.Run(() => ToolResult.Ok(Submit(path, ctx.Arguments, ct)), ct)),
-            });
+            var arguments = new JObject { ["capability"] = capability, ["task"] = task, ["missing"] = missing,
+                ["checkedTools"] = checkedTools, ["workaround"] = workaround, ["benefit"] = benefit };
+            return Task.Run(() => Submit(_path, arguments, cancellation), cancellation);
         }
 
         internal static JObject Submit(string path, JObject arguments, CancellationToken ct = default)
