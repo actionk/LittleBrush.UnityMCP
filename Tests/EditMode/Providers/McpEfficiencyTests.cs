@@ -99,5 +99,72 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             }
             finally { preview.Cleanup(); }
         }
+
+        [Test]
+        public void StudioPreviewExcludesOverlayAndCleansUpAfterFailure()
+        {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            var sceneCount = UnityEngine.SceneManagement.SceneManager.sceneCount;
+            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.name = "Studio test mesh";
+            var overlay = new GameObject("Studio test unrelated overlay", typeof(Canvas));
+            var panel = new GameObject("Panel", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            panel.transform.SetParent(overlay.transform, false);
+            var rect = panel.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            panel.GetComponent<UnityEngine.UI.Image>().color = Color.magenta;
+            var canvas = overlay.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = short.MaxValue;
+            overlay.SetActive(false);
+            var material = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
+            var renderer = cube.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            var selection = UnityEditor.Selection.activeObject;
+            var previewCount = UnityEditor.SceneManagement.EditorSceneManager.previewSceneCount;
+            var dirty = scene.isDirty;
+            var fog = RenderSettings.fog;
+            var texture = new Texture2D(2, 2);
+            var args = JObject.Parse("{'width':128,'height':128,'background':'#202020'}");
+            try
+            {
+                var baseline = ScenePreviewProvider.CaptureStudio(cube, args, CancellationToken.None);
+                overlay.SetActive(true);
+                var withOverlay = ScenePreviewProvider.CaptureStudio(cube, args, CancellationToken.None);
+                var first = baseline.Content.OfType<ImageContent>().Single().Data;
+                var second = withOverlay.Content.OfType<ImageContent>().Single().Data;
+                Assert.That(texture.LoadImage(first), Is.True);
+                Assert.That(texture.GetPixel(64, 64).grayscale, Is.GreaterThan(.15f), "The target must actually render.");
+                CollectionAssert.AreEqual(first, second, "A loaded screen-space overlay must not appear in the studio capture.");
+                Assert.That(renderer.sharedMaterial, Is.SameAs(material));
+                Assert.That(renderer.enabled, Is.True);
+                Assert.That(UnityEditor.Selection.activeObject, Is.SameAs(selection));
+                Assert.That(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), Is.EqualTo(scene));
+                Assert.That(UnityEngine.SceneManagement.SceneManager.sceneCount, Is.EqualTo(sceneCount));
+                Assert.That(scene.isDirty, Is.EqualTo(dirty));
+                Assert.That(UnityEditor.SceneManagement.EditorSceneManager.previewSceneCount, Is.EqualTo(previewCount));
+
+                var line = cube.AddComponent<LineRenderer>();
+                line.positionCount = 2;
+                try
+                {
+                    Assert.Throws<McpToolException>(() => ScenePreviewProvider.CaptureStudio(cube, args, CancellationToken.None));
+                    Assert.That(UnityEditor.SceneManagement.EditorSceneManager.previewSceneCount, Is.EqualTo(previewCount),
+                        "Unsupported-renderer failures must dispose their temporary preview scene.");
+                    Assert.That(RenderSettings.fog, Is.EqualTo(fog),
+                        "A failed static preview must restore the global lighting context before destroying its scene.");
+                }
+                finally { UnityEngine.Object.DestroyImmediate(line); }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+                UnityEngine.Object.DestroyImmediate(overlay);
+                UnityEngine.Object.DestroyImmediate(cube);
+                UnityEngine.Object.DestroyImmediate(material);
+            }
+        }
     }
 }

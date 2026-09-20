@@ -12,6 +12,12 @@ Give agents the capabilities needed to complete their work while minimizing disr
 - Tests of data or rendering should use the underlying APIs. Show a window only for behavior that genuinely requires a displayed UI, and close only the window created by that test in guaranteed cleanup.
 - Verify both the result and preservation of user-owned Editor state. Quiet operation must not reduce capability, hide failures, or bypass trust and consent rules.
 
+`scene.preview_screenshot` supports `mode: "studio"` for mesh asset inspection. It draws only the
+target's enabled mesh/skinned-mesh renderers in an isolated preview scene with neutral lights,
+without gameplay cameras, UI or scripts. Use `cameraRotation`/`cameraPosition` to frame it; no
+`cameraPath` is needed. Materials and property blocks are preserved. Other renderer types require
+the existing `isolation` or `context` modes. Studio capture does not save or regenerate scene assets.
+
 ## Attribute-based registration
 
 ```csharp

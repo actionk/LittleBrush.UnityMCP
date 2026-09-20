@@ -4,6 +4,7 @@
   "references": [
     "LittleBrushGames.UnityMCP",
     "LittleBrushGames.UnityMCP.Editor",
+    "UnityEngine.UI",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],

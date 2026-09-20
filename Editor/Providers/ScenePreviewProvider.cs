@@ -20,7 +20,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             new ToolDescriptor
             {
                 Name = "scene.preview_screenshot",
-                Description = "Edit Mode only: render a loaded or project scene GameObject without changing the loaded scene set. Uses a temporary camera copied from the gameplay camera, auto-frames renderer bounds, and returns an inline PNG. Supports isolation or scene context; never starts Play Mode.",
+                Description = "Edit Mode only: render a loaded or project scene GameObject without changing the loaded scene set. Uses a temporary camera copied from the gameplay camera, auto-frames renderer bounds, and returns an inline PNG. Supports isolation, scene context, or studio mesh rendering with neutral lights and no gameplay UI; never starts Play Mode.",
                 Availability = ToolAvailability.EditMode,
                 Execution = ToolExecution.Sync,
                 RequiresMainThread = true,
@@ -34,7 +34,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                         ""cameraPath"": { ""type"": ""string"" },
                         ""cameraPosition"": { ""type"": ""array"", ""minItems"": 3, ""maxItems"": 3, ""items"": { ""type"": ""number"" } },
                         ""cameraRotation"": { ""type"": ""array"", ""minItems"": 3, ""maxItems"": 3, ""items"": { ""type"": ""number"" }, ""description"": ""World Euler angles in degrees. Without cameraPosition, auto-frame using this rotation."" },
-                        ""mode"": { ""type"": ""string"", ""enum"": [""isolation"", ""context""], ""description"": ""isolation hides the world; context preserves the scene culling mask."" },
+                        ""mode"": { ""type"": ""string"", ""enum"": [""isolation"", ""context"", ""studio""], ""description"": ""isolation hides the world; context preserves scene surroundings; studio renders mesh/skinned-mesh geometry with neutral lighting in a separate preview scene and needs no gameplay camera."" },
                         ""width"": { ""type"": ""integer"", ""minimum"": 64, ""maximum"": 4096 },
                         ""height"": { ""type"": ""integer"", ""minimum"": 64, ""maximum"": 4096 },
                         ""padding"": { ""type"": ""number"", ""minimum"": 0, ""maximum"": 1 },
@@ -44,7 +44,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Handler = Capture,
             };
 
-        private static ValueTask<ToolResult> Capture(ToolContext ctx, CancellationToken _)
+        private static ValueTask<ToolResult> Capture(ToolContext ctx, CancellationToken cancellationToken)
         {
             if (EditorApplication.isPlaying)
                 throw new McpToolException(McpErrorCodes.ToolUnavailable, "scene.preview_screenshot is Edit Mode only; use editor.screenshot for an explicitly requested Play Mode capture.");
@@ -52,13 +52,19 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             using var scope = SceneAssetScope.Open((string)ctx.Arguments["scenePath"]);
             var scene = scope.Scene;
             var target = ResolveObject(scene, ctx.Arguments);
+            if ((string)ctx.Arguments["mode"] == "studio")
+            {
+                var result = CaptureStudio(target, ctx.Arguments, cancellationToken);
+                scope.AddMetadata(result.StructuredContent);
+                return new ValueTask<ToolResult>(result);
+            }
             var sourceCamera = ResolveCamera(scene, (string)ctx.Arguments["cameraPath"]);
             var renderers = target.GetComponentsInChildren<Renderer>(true);
             var bounds = GetBounds(target, renderers);
             var mode = (string)ctx.Arguments["mode"] ?? "isolation";
             if (!string.Equals(mode, "isolation", StringComparison.Ordinal) &&
                 !string.Equals(mode, "context", StringComparison.Ordinal))
-                throw new McpToolException(McpErrorCodes.InvalidParams, "mode must be 'isolation' or 'context'.");
+                throw new McpToolException(McpErrorCodes.InvalidParams, "mode must be 'isolation', 'context' or 'studio'.");
             var isolation = string.Equals(mode, "isolation", StringComparison.Ordinal);
             var width = ctx.Arguments["width"]?.Value<int>() ?? GetDefaultWidth(sourceCamera);
             var height = ctx.Arguments["height"]?.Value<int>() ?? GetDefaultHeight(sourceCamera);
@@ -163,6 +169,116 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 if (renderTexture != null)
                     RenderTexture.ReleaseTemporary(renderTexture);
                 UnityEngine.Object.DestroyImmediate(previewObject);
+            }
+        }
+        internal static ToolResult CaptureStudio(GameObject target, JObject arguments, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!string.IsNullOrWhiteSpace((string)arguments["cameraPath"]))
+                throw new McpToolException(McpErrorCodes.InvalidParams, "Studio mode uses its own camera; use cameraRotation/cameraPosition instead of cameraPath.");
+            var background = new Color(0.16f, 0.18f, 0.21f, 1f);
+            if (arguments["background"] != null && !ColorUtility.TryParseHtmlString((string)arguments["background"], out background))
+                throw new McpToolException(McpErrorCodes.InvalidParams, "background must be an HTML color.");
+            int width = arguments["width"]?.Value<int>() ?? 1600;
+            int height = arguments["height"]?.Value<int>() ?? 1000;
+            float padding = arguments["padding"]?.Value<float>() ?? 0.12f;
+            var renderers = target.GetComponentsInChildren<Renderer>(true);
+            var bounds = GetBounds(target, renderers);
+            var ownedMeshes = new List<Mesh>();
+            PreviewRenderUtility preview = null;
+            Texture2D texture = null;
+            bool previewStarted = false;
+            try
+            {
+                preview = new PreviewRenderUtility();
+                var camera = preview.camera;
+                camera.cameraType = CameraType.Preview;
+                camera.orthographic = true;
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = background;
+                camera.allowHDR = false;
+                camera.allowMSAA = false;
+                camera.nearClipPlane = 0.01f;
+                camera.transform.rotation = Quaternion.Euler(20f, -25f, 0f);
+                var framing = ApplyCameraPose(camera, bounds, width, height, padding, arguments);
+                preview.ambientColor = new Color(0.6f, 0.65f, 0.72f);
+                preview.lights[0].intensity = 4f;
+                preview.lights[0].transform.rotation = camera.transform.rotation * Quaternion.Euler(25f, -35f, 0f);
+                preview.lights[1].intensity = 2.5f;
+                preview.lights[1].transform.rotation = camera.transform.rotation * Quaternion.Euler(-15f, 55f, 0f);
+                preview.BeginStaticPreview(new Rect(0, 0, width, height));
+                previewStarted = true;
+                int drawCount = 0;
+                var properties = new MaterialPropertyBlock();
+                var materialProperties = new MaterialPropertyBlock();
+                foreach (var renderer in renderers)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!renderer.enabled || !renderer.gameObject.activeInHierarchy) continue;
+                    Mesh mesh;
+                    if (renderer is SkinnedMeshRenderer skinned)
+                    {
+                        mesh = new Mesh { hideFlags = HideFlags.HideAndDontSave };
+                        ownedMeshes.Add(mesh);
+                        skinned.BakeMesh(mesh);
+                    }
+                    else if (renderer is MeshRenderer)
+                        mesh = renderer.GetComponent<MeshFilter>()?.sharedMesh;
+                    else
+                        throw new McpToolException(McpErrorCodes.ValidationFailed,
+                            $"Studio mode supports MeshRenderer and SkinnedMeshRenderer; '{renderer.name}' uses {renderer.GetType().Name}. Use isolation/context for other renderer types.");
+                    if (mesh == null) continue;
+                    var materials = renderer.sharedMaterials;
+                    renderer.GetPropertyBlock(properties);
+                    for (int submesh = 0; submesh < mesh.subMeshCount && submesh < materials.Length; submesh++)
+                    {
+                        if (materials[submesh] == null) continue;
+                        renderer.GetPropertyBlock(materialProperties, submesh);
+                        preview.DrawMesh(mesh, renderer.localToWorldMatrix, materials[submesh], submesh,
+                            materialProperties.isEmpty ? properties : materialProperties);
+                        drawCount++;
+                    }
+                }
+                if (drawCount == 0)
+                    throw new McpToolException(McpErrorCodes.NotFound, "Target has no mesh submeshes with materials to render.");
+                cancellationToken.ThrowIfCancellationRequested();
+                preview.Render(true);
+                texture = preview.EndStaticPreview();
+                previewStarted = false;
+                var png = texture.EncodeToPNG();
+                return ToolResult.Ok(new JObject
+                {
+                    ["source"] = "SceneObjectPreview",
+                    ["objectPath"] = SceneSerializer.GetHierarchyPath(target),
+                    ["mode"] = "studio",
+                    ["isolated"] = true,
+                    ["nonDestructive"] = true,
+                    ["width"] = width,
+                    ["height"] = height,
+                    ["padding"] = padding,
+                    ["meshDrawCount"] = drawCount,
+                    ["sizeBytes"] = png.Length,
+                    ["boundsCenter"] = UnitySerializer.ToJson(bounds.center),
+                    ["boundsSize"] = UnitySerializer.ToJson(bounds.size),
+                    ["cameraPosition"] = UnitySerializer.ToJson(camera.transform.position),
+                    ["cameraRotation"] = UnitySerializer.ToJson(camera.transform.eulerAngles),
+                    ["orthographicSize"] = framing.OrthographicSize,
+                }, new ImageContent { Data = png, MimeType = "image/png" });
+            }
+            finally
+            {
+                try
+                {
+                    // BeginStaticPreview installs global lighting/render-target state that Cleanup
+                    // alone does not restore when an exception or cancellation skips EndStaticPreview.
+                    if (previewStarted) preview.EndPreview();
+                }
+                finally
+                {
+                    if (texture != null) UnityEngine.Object.DestroyImmediate(texture);
+                    preview?.Cleanup();
+                    foreach (var mesh in ownedMeshes) UnityEngine.Object.DestroyImmediate(mesh);
+                }
             }
         }
 
