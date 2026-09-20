@@ -20,6 +20,12 @@ the existing `isolation` or `context` modes. Studio capture does not save or reg
 
 ## Attribute-based registration
 
+Scene-aware extension providers can reuse the public `SceneAssetScope`. Use `Open` for reads or
+`OpenForWrite` for writes, require `RequireExpectedHash` before mutating an existing scene, and
+call `Save` only after successful work. Always dispose the scope. It owns transient scene access
+and restores the prior active scene; the provider still owns transactional mutation/Undo and
+must avoid changing selection or saving unrelated scenes.
+
 ```csharp
 using LittleBrushGames.Mcp;
 using LittleBrushGames.Mcp.Editor;

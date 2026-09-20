@@ -7,7 +7,8 @@ using UnityEngine.SceneManagement;
 
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
-    internal sealed class SceneAssetScope : IDisposable
+    /// <summary>Scoped scene asset access for typed providers. Writers must validate the expected hash before mutation.</summary>
+    public sealed class SceneAssetScope : IDisposable
     {
         private bool _disposed;
         private readonly Scene _previousActiveScene;
