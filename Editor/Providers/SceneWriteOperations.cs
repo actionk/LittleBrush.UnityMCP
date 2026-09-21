@@ -490,8 +490,17 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 throw new McpToolException(McpErrorCodes.InvalidParams,
                     "create_gameobject requires 'parentPath' when applied to a single root (e.g. a prefab).");
 
-            var go = new GameObject(name);
+            GameObject go;
+            if (op["primitive"] != null)
+            {
+                if (!Enum.TryParse((string)op["primitive"], true, out PrimitiveType primitive) || !Enum.IsDefined(typeof(PrimitiveType), primitive))
+                    throw new McpToolException(McpErrorCodes.InvalidParams, "primitive must be Sphere, Capsule, Cylinder, Cube, Plane or Quad.");
+                go = GameObject.CreatePrimitive(primitive);
+                go.name = name;
+            }
+            else go = new GameObject(name);
             Undo.RegisterCreatedObjectUndo(go, "MCP create");
+            if (op["tag"] != null) go.tag = (string)op["tag"];
 
             if (contextScene.IsValid())
                 SceneManager.MoveGameObjectToScene(go, contextScene);

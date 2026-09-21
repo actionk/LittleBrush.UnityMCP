@@ -140,8 +140,10 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             finally { Object.DestroyImmediate(root); }
         }
 
-        [Test]
-        public void ApplyToRoot_CreateGameObjectUnderParent_Succeeds()
+        [TestCase(null)]
+        [TestCase("Cube")]
+        [TestCase("Cylinder")]
+        public void ApplyToRoot_CreateGameObjectUnderParent_Succeeds(string primitive)
         {
             var root = new GameObject("Root");
             try
@@ -155,9 +157,20 @@ namespace LittleBrushGames.Mcp.Tests.Providers
                         ["parentPath"] = "Root",
                     },
                 };
+                if (primitive != null) ops[0]["primitive"] = primitive;
                 var result = SceneWriteOperations.ApplyToRoot(root, ops);
                 Assert.That((int)result["succeeded"], Is.EqualTo(1));
-                Assert.That(root.transform.Find("Child"), Is.Not.Null);
+                var child = root.transform.Find("Child");
+                Assert.That(child, Is.Not.Null);
+                if (primitive != null)
+                {
+                    Assert.That(child.GetComponent<MeshFilter>().sharedMesh, Is.Not.Null);
+                    Assert.That(child.GetComponent<Collider>(), Is.Not.Null);
+                    ops[0]["primitive"] = "UnsupportedPrimitive";
+                    ops[0]["name"] = "Invalid";
+                    Assert.That((int)SceneWriteOperations.ApplyToRoot(root, ops)["failed"], Is.EqualTo(1));
+                    Assert.That(root.transform.Find("Invalid"), Is.Null);
+                }
             }
             finally { Object.DestroyImmediate(root); }
         }

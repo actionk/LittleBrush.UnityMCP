@@ -52,6 +52,34 @@ namespace LittleBrushGames.Mcp.Tests.Providers
                 Assert.That((bool)result["propertiesTruncated"], Is.True);
                 Assert.That((int)result["nextPropertyOffset"], Is.EqualTo(1));
                 Assert.That(result["properties"][0]["description"], Is.Null);
+
+                var texturePath = folder + "/Tiling.asset";
+                AssetDatabase.CreateAsset(new Texture2D(2, 2), texturePath);
+                var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+                var write = sink.Tools.Single(item => item.Name == "material.write");
+                var args = new JObject
+                {
+                    ["path"] = path,
+                    ["expectedHash"] = result["hash"],
+                    ["dryRun"] = true,
+                    ["properties"] = new JObject { ["_MainTex"] = new JObject
+                    {
+                        ["assetPath"] = texturePath,
+                        ["scale"] = new JObject { ["x"] = 3f, ["y"] = 2f },
+                        ["offset"] = new JObject { ["x"] = .1f, ["y"] = .2f },
+                    } },
+                };
+                write.Handler(Ctx(args), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+                Assert.That(material.GetTextureScale("_MainTex"), Is.EqualTo(Vector2.one), "Dry-run must preserve the material.");
+                args["dryRun"] = false;
+                write.Handler(Ctx(args), CancellationToken.None).AsTask().GetAwaiter().GetResult();
+                Assert.That(material.GetTextureScale("_MainTex"), Is.EqualTo(new Vector2(3, 2)));
+                Assert.That(material.GetTextureOffset("_MainTex"), Is.EqualTo(new Vector2(.1f, .2f)));
+                var readback = tool.Handler(Ctx(new JObject { ["path"] = path, ["propertyLimit"] = 100 }),
+                    CancellationToken.None).AsTask().GetAwaiter().GetResult().StructuredContent;
+                var textureValue = readback["properties"].Single(p => (string)p["name"] == "_MainTex")["value"];
+                Assert.That((float)textureValue["scale"]["x"], Is.EqualTo(3f));
+                Assert.That((float)textureValue["offset"]["y"], Is.EqualTo(.2f));
             }
             finally
             {

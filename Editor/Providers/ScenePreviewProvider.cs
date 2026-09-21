@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -7,6 +8,7 @@ using LittleBrushGames.Mcp.Editor.Dispatch;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Rendering;
 
 namespace LittleBrushGames.Mcp.Editor.Providers
 {
@@ -38,7 +40,9 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                         ""width"": { ""type"": ""integer"", ""minimum"": 64, ""maximum"": 4096 },
                         ""height"": { ""type"": ""integer"", ""minimum"": 64, ""maximum"": 4096 },
                         ""padding"": { ""type"": ""number"", ""minimum"": 0, ""maximum"": 1 },
-                        ""background"": { ""type"": ""string"", ""description"": ""Optional HTML color. Omit to preserve the gameplay camera clear settings."" }
+                        ""background"": { ""type"": ""string"", ""description"": ""Optional HTML color. Omit to preserve the gameplay camera clear settings."" },
+                        ""ground"": { ""type"": ""boolean"", ""description"": ""Studio only: neutral ground plane and shadow-casting geometry."" },
+                        ""excludePaths"": { ""type"": ""array"", ""items"": { ""type"": ""string"" }, ""description"": ""Studio only: exact target-relative subtree paths omitted from rendering, without changing scene objects."" }
                     }
                 }"),
                 Handler = Capture,
@@ -182,9 +186,14 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             int width = arguments["width"]?.Value<int>() ?? 1600;
             int height = arguments["height"]?.Value<int>() ?? 1000;
             float padding = arguments["padding"]?.Value<float>() ?? 0.12f;
-            var renderers = target.GetComponentsInChildren<Renderer>(true);
+            bool ground = arguments["ground"]?.Value<bool>() ?? false;
+            var excluded = (arguments["excludePaths"] as JArray ?? new JArray()).Values<string>().Select(path =>
+                target.transform.Find(path) ?? throw new McpToolException(McpErrorCodes.NotFound, $"Excluded subtree not found: '{path}'.")).ToArray();
+            var renderers = target.GetComponentsInChildren<Renderer>(true)
+                .Where(renderer => !excluded.Any(root => renderer.transform.IsChildOf(root))).ToArray();
             var bounds = GetBounds(target, renderers);
             var ownedMeshes = new List<Mesh>();
+            Material groundMaterial = null;
             PreviewRenderUtility preview = null;
             Texture2D texture = null;
             bool previewStarted = false;
@@ -206,8 +215,40 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 preview.lights[0].transform.rotation = camera.transform.rotation * Quaternion.Euler(25f, -35f, 0f);
                 preview.lights[1].intensity = 2.5f;
                 preview.lights[1].transform.rotation = camera.transform.rotation * Quaternion.Euler(-15f, 55f, 0f);
+                if (ground)
+                {
+                    preview.lights[0].shadows = LightShadows.Soft;
+                    preview.lights[0].shadowStrength = .75f;
+                    preview.lights[0].shadowBias = .02f;
+                    preview.lights[0].shadowNormalBias = .2f;
+                    preview.lights[0].shadowResolution = LightShadowResolution.High;
+                    preview.lights[1].intensity = 1.2f;
+                }
                 preview.BeginStaticPreview(new Rect(0, 0, width, height));
                 previewStarted = true;
+                if (ground)
+                {
+                    var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                    if (shader == null) throw new McpToolException(McpErrorCodes.NotFound, "No supported lit shader for studio ground.");
+                    groundMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave, color = new Color(.24f, .26f, .28f) };
+                    if (groundMaterial.HasProperty("_Smoothness")) groundMaterial.SetFloat("_Smoothness", 0f);
+                    float radius = Mathf.Max(bounds.size.x, bounds.size.z, bounds.size.y) * 3f;
+                    camera.farClipPlane = Mathf.Max(camera.farClipPlane, radius * 4f);
+                    var mesh = new Mesh { hideFlags = HideFlags.HideAndDontSave, name = "Studio ground" };
+                    ownedMeshes.Add(mesh);
+                    mesh.vertices = new[] { new Vector3(-radius,0,-radius), new Vector3(-radius,0,radius),
+                        new Vector3(radius,0,radius), new Vector3(radius,0,-radius) };
+                    mesh.triangles = new[] { 0, 1, 2, 0, 2, 3 }; mesh.RecalculateNormals(); mesh.RecalculateBounds();
+                    var groundObject = EditorUtility.CreateGameObjectWithHideFlags("Studio ground", HideFlags.HideAndDontSave,
+                        typeof(MeshFilter), typeof(MeshRenderer));
+                    preview.AddSingleGO(groundObject);
+                    groundObject.transform.position = new Vector3(bounds.center.x, bounds.min.y - .015f, bounds.center.z);
+                    groundObject.GetComponent<MeshFilter>().sharedMesh = mesh;
+                    var groundRenderer = groundObject.GetComponent<MeshRenderer>();
+                    groundRenderer.sharedMaterial = groundMaterial;
+                    groundRenderer.shadowCastingMode = ShadowCastingMode.Off;
+                    groundRenderer.receiveShadows = true;
+                }
                 int drawCount = 0;
                 var properties = new MaterialPropertyBlock();
                 var materialProperties = new MaterialPropertyBlock();
@@ -234,8 +275,12 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     {
                         if (materials[submesh] == null) continue;
                         renderer.GetPropertyBlock(materialProperties, submesh);
-                        preview.DrawMesh(mesh, renderer.localToWorldMatrix, materials[submesh], submesh,
-                            materialProperties.isEmpty ? properties : materialProperties);
+                        var block = materialProperties.isEmpty ? properties : materialProperties;
+                        if (ground)
+                            Graphics.RenderMesh(new RenderParams(materials[submesh]) { camera = camera, matProps = block,
+                                worldBounds = renderer.bounds,
+                                shadowCastingMode = ShadowCastingMode.On, receiveShadows = true }, mesh, submesh, renderer.localToWorldMatrix);
+                        else preview.DrawMesh(mesh, renderer.localToWorldMatrix, materials[submesh], submesh, block);
                         drawCount++;
                     }
                 }
@@ -251,6 +296,8 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                     ["source"] = "SceneObjectPreview",
                     ["objectPath"] = SceneSerializer.GetHierarchyPath(target),
                     ["mode"] = "studio",
+                    ["ground"] = ground,
+                    ["excludedSubtreeCount"] = excluded.Length,
                     ["isolated"] = true,
                     ["nonDestructive"] = true,
                     ["width"] = width,
@@ -277,6 +324,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 {
                     if (texture != null) UnityEngine.Object.DestroyImmediate(texture);
                     preview?.Cleanup();
+                    if (groundMaterial != null) UnityEngine.Object.DestroyImmediate(groundMaterial);
                     foreach (var mesh in ownedMeshes) UnityEngine.Object.DestroyImmediate(mesh);
                 }
             }

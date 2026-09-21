@@ -138,7 +138,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             new ToolDescriptor
             {
                 Name = "scene.write",
-                Description = "Apply one transactional GameObject batch. Existing scenes require expectedHash from scene.read; dirty loaded scenes are rejected to protect unsaved work. Explicit unloaded scenePath values are opened additively only for this call, saved, and closed with the prior active scene restored. createIfMissing creates a new scene through this same tool. Mutating ops accept path or entityId. Op types: create_gameobject, delete_gameobject, rename_gameobject, set_active, set_transform, reparent, add_component, remove_component, set_property, instantiate_prefab.",
+                Description = "Apply one transactional GameObject batch. Existing scenes require expectedHash from scene.read; dirty loaded scenes are rejected to protect unsaved work. Explicit unloaded scenePath values are opened additively only for this call, saved, and closed with the prior active scene restored. createIfMissing creates a new scene through this same tool. Mutating ops accept path or entityId. Op types: create_gameobject, delete_gameobject, rename_gameobject, set_active, set_transform, reparent, add_component, remove_component, set_property, instantiate_prefab. create_gameobject accepts optional primitive (Sphere, Capsule, Cylinder, Cube, Plane, Quad), tag, parentPath, and localPosition/localEulerAngles/localScale objects with x/y/z fields.",
                 Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"",

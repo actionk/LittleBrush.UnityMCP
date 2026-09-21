@@ -42,7 +42,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             new ToolDescriptor
             {
                 Name = "material.write",
-                Description = "Set material shader, keywords, renderQueue, and shader properties with expectedHash and dryRun validation.",
+                Description = "Set material shader, keywords, renderQueue, and shader properties with expectedHash and dryRun validation. Texture values accept an asset path or {assetPath, scale:{x,y}, offset:{x,y}}; omitted scale/offset are preserved.",
                 Availability = ToolAvailability.Either,
                 InputSchema = JObject.Parse(@"{
                     ""type"": ""object"", ""required"": [""path"", ""expectedHash""], ""additionalProperties"": false,
@@ -193,10 +193,21 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         {
             ShaderPropertyType.Color => new JObject { ["r"] = material.GetColor(name).r, ["g"] = material.GetColor(name).g, ["b"] = material.GetColor(name).b, ["a"] = material.GetColor(name).a },
             ShaderPropertyType.Vector => new JObject { ["x"] = material.GetVector(name).x, ["y"] = material.GetVector(name).y, ["z"] = material.GetVector(name).z, ["w"] = material.GetVector(name).w },
-            ShaderPropertyType.Texture => material.GetTexture(name) != null ? UnitySerializer.ToJson(material.GetTexture(name)) : JValue.CreateNull(),
+            ShaderPropertyType.Texture => ReadTexture(material, name),
             ShaderPropertyType.Int => material.GetInt(name),
             _ => material.GetFloat(name),
         };
+
+        private static JToken ReadTexture(Material material, string name)
+        {
+            if (material.GetTexture(name) == null) return JValue.CreateNull();
+            var value = (JObject)UnitySerializer.ToJson(material.GetTexture(name));
+            var scale = material.GetTextureScale(name);
+            var offset = material.GetTextureOffset(name);
+            value["scale"] = new JObject { ["x"] = scale.x, ["y"] = scale.y };
+            value["offset"] = new JObject { ["x"] = offset.x, ["y"] = offset.y };
+            return value;
+        }
 
         private static void Apply(Material material, JObject args)
         {
@@ -232,6 +243,13 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                         var path = value.Type == JTokenType.String ? (string)value : (string)value["assetPath"];
                         material.SetTexture(name, AssetDatabase.LoadAssetAtPath<Texture>(AssetProvider.NormalizeAssetPath(path))
                             ?? throw new McpToolException(McpErrorCodes.NotFound, $"Texture not found: '{path}'."));
+                        if (value is JObject texture)
+                        {
+                            if (texture["scale"] is JObject scale)
+                                material.SetTextureScale(name, new Vector2((float)scale["x"], (float)scale["y"]));
+                            if (texture["offset"] is JObject offset)
+                                material.SetTextureOffset(name, new Vector2((float)offset["x"], (float)offset["y"]));
+                        }
                     }
                     break;
                 case ShaderPropertyType.Int: material.SetInt(name, value.Value<int>()); break;

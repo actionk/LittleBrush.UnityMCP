@@ -100,13 +100,20 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             finally { preview.Cleanup(); }
         }
 
-        [Test]
-        public void StudioPreviewExcludesOverlayAndCleansUpAfterFailure()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void StudioPreviewExcludesOverlayAndCleansUpAfterFailure(bool ground)
         {
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             var sceneCount = UnityEngine.SceneManagement.SceneManager.sceneCount;
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.name = "Studio test mesh";
+            var hidden = new GameObject("Hidden subtree", typeof(LineRenderer));
+            hidden.transform.SetParent(cube.transform, false);
+            var unrelated = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            unrelated.name = "Studio test unrelated world mesh";
+            unrelated.transform.localScale = Vector3.one * 3;
+            unrelated.SetActive(false);
             var overlay = new GameObject("Studio test unrelated overlay", typeof(Canvas));
             var panel = new GameObject("Panel", typeof(RectTransform), typeof(UnityEngine.UI.Image));
             panel.transform.SetParent(overlay.transform, false);
@@ -128,15 +135,22 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             var fog = RenderSettings.fog;
             var texture = new Texture2D(2, 2);
             var args = JObject.Parse("{'width':128,'height':128,'background':'#202020'}");
+            args["ground"] = ground;
+            args["excludePaths"] = new JArray("Hidden subtree");
             try
             {
                 var baseline = ScenePreviewProvider.CaptureStudio(cube, args, CancellationToken.None);
+                Assert.That((bool)baseline.StructuredContent["ground"], Is.EqualTo(ground));
+                Assert.That(hidden.activeSelf, Is.True, "Cutaway previews must not deactivate authored objects.");
                 overlay.SetActive(true);
+                unrelated.SetActive(true);
                 var withOverlay = ScenePreviewProvider.CaptureStudio(cube, args, CancellationToken.None);
                 var first = baseline.Content.OfType<ImageContent>().Single().Data;
                 var second = withOverlay.Content.OfType<ImageContent>().Single().Data;
                 Assert.That(texture.LoadImage(first), Is.True);
                 Assert.That(texture.GetPixel(64, 64).grayscale, Is.GreaterThan(.15f), "The target must actually render.");
+                if (ground)
+                    Assert.That(texture.GetPixel(64, 3).grayscale, Is.GreaterThan(.18f), "Studio ground must render below the target.");
                 CollectionAssert.AreEqual(first, second, "A loaded screen-space overlay must not appear in the studio capture.");
                 Assert.That(renderer.sharedMaterial, Is.SameAs(material));
                 Assert.That(renderer.enabled, Is.True);
@@ -162,6 +176,7 @@ namespace LittleBrushGames.Mcp.Tests.Providers
             {
                 UnityEngine.Object.DestroyImmediate(texture);
                 UnityEngine.Object.DestroyImmediate(overlay);
+                UnityEngine.Object.DestroyImmediate(unrelated);
                 UnityEngine.Object.DestroyImmediate(cube);
                 UnityEngine.Object.DestroyImmediate(material);
             }
