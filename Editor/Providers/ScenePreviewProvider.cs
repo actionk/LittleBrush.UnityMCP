@@ -22,6 +22,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             new ToolDescriptor
             {
                 Name = "scene.preview_screenshot",
+                RequiresGraphics = true,
                 Description = "Edit Mode only: render a loaded or project scene GameObject without changing the loaded scene set. Uses a temporary camera copied from the gameplay camera, auto-frames renderer bounds, and returns an inline PNG. Supports isolation, scene context, or studio mesh rendering with neutral lights and no gameplay UI; never starts Play Mode.",
                 Availability = ToolAvailability.EditMode,
                 Execution = ToolExecution.Sync,

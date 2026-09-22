@@ -75,6 +75,7 @@ namespace LittleBrushGames.Mcp.Editor
                 Name = attribute.Name, Description = attribute.Description, InputSchema = inputSchema,
                 Availability = attribute.Availability, TrustCategory = attribute.Access,
                 RequiresMainThread = attribute.RequiresMainThread, RequiresWriterLease = attribute.RequiresWriterLease,
+                RequiresGraphics = attribute.RequiresGraphics, RequiresInteractiveEditor = attribute.RequiresInteractiveEditor,
                 ReloadSafe = attribute.ReloadSafe, ExclusiveGroup = attribute.ExclusiveGroup,
                 Timeout = attribute.TimeoutMs == 0 ? null : TimeSpan.FromMilliseconds(attribute.TimeoutMs),
                 Execution = isAsync ? ToolExecution.Async : ToolExecution.Sync,

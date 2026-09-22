@@ -11,6 +11,21 @@ namespace LittleBrushGames.Mcp.Tests.Transport
     public class BridgeTransportDrainTests
     {
         [Test]
+        public void MatchingExecutableDoesNotGrantOwnershipOfALauncher()
+        {
+            using var transport = new BridgeTransport(null, null);
+            using var process = System.Diagnostics.Process.GetCurrentProcess();
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            var owns = typeof(BridgeTransport).GetMethod("IsOwnedBridgeProcess", flags);
+            var path = process.MainModule.FileName;
+            Assert.That(owns.Invoke(transport, new object[] { process, path }), Is.False,
+                "Sharing a server executable must not make a stdio launcher eligible for cleanup.");
+            typeof(BridgeTransport).GetField("_bridgeProcessId", flags).SetValue(transport, process.Id);
+            Assert.That(owns.Invoke(transport, new object[] { process, path }), Is.True);
+            Assert.That(owns.Invoke(transport, new object[] { process, path + ".other" }), Is.False);
+        }
+
+        [Test]
         public void ForeignBridge_IsRejectedWithoutTakingOwnership()
         {
             using var transport = new BridgeTransport(null, null);

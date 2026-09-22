@@ -143,7 +143,7 @@ namespace LittleBrushGames.Mcp.Editor.Transport
             }
             _bridgeExecutablePath = bridgePath;
 
-            // Kill any stale bridge process for this project that isn't responding.
+            // Stop only the server this transport owns; never a stdio launcher or another project.
             KillBridge();
 
             _log.Log(LogLevel.Info, $"Starting MCP bridge: {bridgePath}");
@@ -219,7 +219,13 @@ namespace LittleBrushGames.Mcp.Editor.Transport
             if (!CreateProcess(null, commandLine, IntPtr.Zero, IntPtr.Zero, false, flags, IntPtr.Zero, null, ref si, out var pi))
             {
                 var error = Marshal.GetLastWin32Error();
-                throw new System.ComponentModel.Win32Exception(error, $"Failed to start MCP bridge (error {error})");
+                // CLI/job hosts may prohibit breakaway. A child still survives domain reload;
+                // in this fallback its lifetime remains bounded by the parent job.
+                if (error != 5 || !CreateProcess(null, commandLine, IntPtr.Zero, IntPtr.Zero, false,
+                        flags & ~CREATE_BREAKAWAY_FROM_JOB, IntPtr.Zero, null, ref si, out pi))
+                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),
+                        $"Failed to start MCP bridge (initial error {error})");
+                _log.Log(LogLevel.Info, "Started MCP bridge inside the parent job (breakaway unavailable).");
             }
 
             _bridgeProcessId = pi.dwProcessId;
@@ -235,6 +241,9 @@ namespace LittleBrushGames.Mcp.Editor.Transport
                 return false;
 
             ValidateBridgeOwner(health);
+            // Only the server identifies itself here; stdio launchers share its executable.
+            var processId = health.Value<int?>("bridgeProcessId");
+            if (processId > 0) _bridgeProcessId = processId.Value;
             return true;
         }
 
@@ -653,59 +662,25 @@ namespace LittleBrushGames.Mcp.Editor.Transport
 
         private void KillBridgeAtPath(string bridgePath)
         {
-            var processName = string.IsNullOrEmpty(bridgePath)
-                ? "mcp-bridge"
-                : Path.GetFileNameWithoutExtension(bridgePath);
-            if (string.IsNullOrEmpty(processName))
-                return;
-
-            Process[] processes;
+            if (_bridgeProcessId <= 0) return;
             try
             {
-                processes = Process.GetProcessesByName(processName);
+                using var process = Process.GetProcessById(_bridgeProcessId);
+                if (!IsOwnedBridgeProcess(process, bridgePath)) return;
+                process.Kill();
+                _log.Log(LogLevel.Info, $"Killed MCP bridge process (PID: {_bridgeProcessId})");
+                _bridgeProcessId = -1;
             }
+            catch (ArgumentException) { _bridgeProcessId = -1; } // Already exited.
             catch (Exception ex)
             {
-                _log.Log(LogLevel.Warn, $"Failed to enumerate bridge processes: {ex.Message}");
-                return;
-            }
-
-            foreach (var proc in processes)
-            {
-                try
-                {
-                    if (!IsOwnedBridgeProcess(proc, bridgePath))
-                        continue;
-
-                    proc.Kill();
-                    _log.Log(LogLevel.Info, $"Killed MCP bridge process (PID: {proc.Id})");
-                    if (proc.Id == _bridgeProcessId)
-                        _bridgeProcessId = -1;
-                }
-                catch (Exception ex)
-                {
-                    _log.Log(LogLevel.Warn, $"Failed to kill bridge process {proc.Id}: {ex.Message}");
-                }
-                finally
-                {
-                    proc.Dispose();
-                }
+                _log.Log(LogLevel.Warn, $"Failed to stop owned bridge process: {ex.Message}");
             }
         }
 
-        private bool IsOwnedBridgeProcess(Process proc, string bridgePath)
-        {
-            if (_bridgeProcessId > 0 && proc.Id == _bridgeProcessId)
-            {
-                if (string.IsNullOrEmpty(bridgePath)) return true;
-                return ProcessPathMatches(proc, bridgePath);
-            }
-
-            if (string.IsNullOrEmpty(bridgePath))
-                return false;
-
-            return ProcessPathMatches(proc, bridgePath);
-        }
+        private bool IsOwnedBridgeProcess(Process process, string bridgePath)
+            => _bridgeProcessId > 0 && process.Id == _bridgeProcessId
+                && !string.IsNullOrEmpty(bridgePath) && ProcessPathMatches(process, bridgePath);
 
         private static bool ProcessPathMatches(Process proc, string expectedPath)
         {

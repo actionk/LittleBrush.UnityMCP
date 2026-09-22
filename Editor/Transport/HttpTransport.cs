@@ -16,6 +16,8 @@ namespace LittleBrushGames.Mcp.Editor.Transport
         private const string ProtocolVersion = "2025-06-18";
 
         private readonly int _port;
+        private readonly string _projectPath;
+        private readonly int _processId;
         private readonly JsonRpcRouter _router;
         private readonly NotificationBroadcaster _broadcaster;
         private readonly ILogSink _log;
@@ -32,6 +34,8 @@ namespace LittleBrushGames.Mcp.Editor.Transport
         public HttpTransport(int port, JsonRpcRouter router, NotificationBroadcaster broadcaster, ILogSink log)
         {
             _port = port;
+            _projectPath = Path.GetFullPath(UnityEngine.Application.dataPath + "/..");
+            _processId = System.Diagnostics.Process.GetCurrentProcess().Id;
             _router = router;
             _broadcaster = broadcaster;
             _log = log;
@@ -114,6 +118,9 @@ namespace LittleBrushGames.Mcp.Editor.Transport
                     {
                         ["ok"] = true,
                         ["port"] = _port,
+                        ["projectPath"] = _projectPath,
+                        ["processId"] = _processId,
+                        ["state"] = "ready",
                         ["clientSessions"] = _broadcaster?.SessionCount ?? 0,
                     });
                     return;

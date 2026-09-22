@@ -14,6 +14,8 @@ namespace LittleBrushGames.Mcp.Editor
         public ToolTrustCategory Access { get; }
         public ToolAvailability Availability { get; set; } = ToolAvailability.EditMode;
         public bool RequiresMainThread { get; set; } = true;
+        public bool RequiresGraphics { get; set; }
+        public bool RequiresInteractiveEditor { get; set; }
         public bool RequiresWriterLease { get; set; } = true;
         public bool ReloadSafe { get; set; }
         public int TimeoutMs { get; set; }

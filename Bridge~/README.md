@@ -1,6 +1,6 @@
 # LittleBrush Unity MCP Bridge
 
-Standalone proxy that keeps MCP client connections alive across Unity domain reloads.
+Native bridge that keeps MCP connections alive across domain reloads, with an on-demand stdio launcher for closed projects.
 
 ## Build
 
@@ -25,10 +25,10 @@ is independent of checkout location. Record source provenance below instead.
 
 Users do not need Go for the bundled Windows/amd64 bridge.
 
-- Source: working-tree `main.go`, SHA-256 `76600BD69C61FFF703CCED4C0BED67689A880E9D2525BCD98D2CED43EBC54F7E` (module definition in `go.mod`)
+- Source: current `main.go`, `launcher*.go`, and `gateway.json` (module definition in `go.mod`).
 - Go: `1.26.2`
 - Build: `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`
-- SHA-256: `E40F6DA67D1D78B000685E0C3ED24A9230462302D7B2E5E96121DF2313534338`
+- SHA-256: `A283F2F1650BC19DAAE256970B44A2CFC02237D7C37F5C189375A699063E22A4`
 - Authenticode: unsigned
 
 The checksum is also stored in [`mcp-bridge.exe.sha256`](mcp-bridge.exe.sha256).
@@ -38,6 +38,11 @@ The checksum is also stored in [`mcp-bridge.exe.sha256`](mcp-bridge.exe.sha256).
 ```text
 mcp-bridge [options]
 
+--stdio         Serve MCP over stdio; reuse the Editor or start a managed batch fallback
+--project       Project directory (required with --stdio)
+--editor        Optional exact Unity executable override
+--idle-timeout  Managed worker idle timeout (default: 5m)
+--startup-timeout Startup/import deadline (default: 10m)
 --port          HTTP port for MCP clients (default: 48765)
 --unity-port    TCP port for Unity connection (default: 48766)
 --log           Log level: debug/info/warn/error (default: info)
@@ -58,3 +63,5 @@ Run `go test ./...` and `go vet ./...`. Queue regression tests cover fresh write
 during reload, FIFO dispatch with concurrent responses, cancellation, expiry,
 connection replacement, and unknown outcomes after failed writes. Use
 `go test -race ./...` where a supported C compiler and CGO are available.
+
+For client setup and ownership rules, see [consumer integration](../docs/consumer-integration.md#automatic-startup-and-unity-cli). The launcher never replays failed writes or closes a manually opened Editor.

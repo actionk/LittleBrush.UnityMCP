@@ -1,0 +1,83 @@
+{
+  "tools": [
+    {
+      "name": "unity.tools",
+      "description": "Search Unity tools, or pass name to fetch one full schema.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "query": {
+            "type": "string"
+          },
+          "names": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "includeDescriptions": {
+            "type": "boolean"
+          },
+          "availableOnly": {
+            "type": "boolean"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 128
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "_meta": {
+        "availability": "Always",
+        "currentlyAvailable": true,
+        "requiresMainThread": false
+      }
+    },
+    {
+      "name": "unity.call",
+      "description": "Invoke a Unity tool by name after fetching its schema with unity.tools.",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tool"
+        ],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "arguments": {
+            "type": "object"
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      },
+      "_meta": {
+        "availability": "Always",
+        "currentlyAvailable": true,
+        "requiresMainThread": false
+      }
+    }
+  ]
+}

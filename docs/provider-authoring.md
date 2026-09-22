@@ -18,6 +18,14 @@ without gameplay cameras, UI or scripts. Use `cameraRotation`/`cameraPosition` t
 `cameraPath` is needed. Materials and property blocks are preserved. Other renderer types require
 the existing `isolation` or `context` modes. Studio capture does not save or regenerate scene assets.
 
+## Batch workers and alternate transports
+
+Registered handlers are shared by HTTP MCP, the on-demand stdio launcher, and the optional Unity Pipeline `lbg_mcp_tools` / `lbg_mcp_call` commands.
+
+Declare `RequiresGraphics = true` for GPU work and `RequiresInteractiveEditor = true` for window/view operations, on either `McpTool` or `ToolDescriptor`. The catalog reports unavailable environments and dispatch rejects them. Custom providers must audit their own UI dependencies; an undeclared requirement is not evidence of batch compatibility. `Ask` permissions fail immediately in batch and never become implicit approvals.
+
+Managed workers exit after five idle minutes. Handler cleanup, background jobs, compilation, imports, Play Mode, and dirty scenes prevent shutdown. Jobs continuing after a handler returns must expose `BackgroundOperationActive` through completion and scene restoration. Save intended changes before reporting success; never discard dirty scenes for automatic shutdown.
+
 ## Attribute-based registration
 
 Scene-aware extension providers can reuse the public `SceneAssetScope`. Use `Open` for reads or

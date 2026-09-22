@@ -78,6 +78,10 @@ namespace LittleBrushGames.Mcp.Editor.UI
             TimeSpan timeout,
             Func<bool> isStillValid = null)
         {
+            if (UnityEngine.Application.isBatchMode)
+                throw new McpToolException(McpErrorCodes.ToolUnavailable,
+                    "This operation requires interactive approval. Configure the local trust policy in the Editor before using batch mode.",
+                    new Newtonsoft.Json.Linq.JObject { ["reason"] = "approval_required_in_batch" });
             if (s_request != null)
             {
                 s_request.TryResolve(McpPermissionGrant.Deny);
