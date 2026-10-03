@@ -32,7 +32,7 @@ Source inventory of 104 registry tools, plus the two MCP gateway tools. Optional
 | [`editor.execute_code`](../Editor/Providers/ExecuteCodeProvider.cs) | Unsandboxed last-resort Roslyn snippet runner governed by the local CodeExecution trust policy. Prefer typed tools whenever they cover the operation. Code runs with Unity's full user permissions; the request timeout cannot interrupt user code after invocation. Requires a reason documenting why no typed tool fits. |
 | [`editor.logs.clear`](../Editor/Providers/LogsProvider.cs) | Clear the log ring buffer. |
 | [`editor.logs.tail`](../Editor/Providers/LogsProvider.cs) | Return the last N buffered log entries with optional substring and level filters. |
-| [`editor.metrics`](../Editor/Providers/EditorStatusProvider.cs) | Page session-local MCP tool duration and serialized response-size metrics. Use query to inspect suspected high-context tools. |
+| [`editor.metrics`](../Editor/Providers/EditorStatusProvider.cs) | Page session-local duration, JSON text character counts excluding images, and decoded image bytes. Use query to inspect suspected high-context tools. |
 | [`editor.pause`](../Editor/Providers/EditorStatusProvider.cs) | Pause the editor. |
 | [`editor.play`](../Editor/Providers/EditorStatusProvider.cs) | Enter Play Mode under the local EditorState trust policy. Returns a playSessionToken; only that token can stop the MCP-started session. |
 | [`editor.refresh`](../Editor/Providers/EditorStatusProvider.cs) | Force AssetDatabase import to detect external file changes. Prefer editor.ensure_compiled when you also need compile errors. |
@@ -43,7 +43,7 @@ Source inventory of 104 registry tools, plus the two MCP gateway tools. Optional
 | [`editor.selection.set`](../Editor/Providers/EditorInspectionProvider.cs) | Select existing objects by session-local IDs after whole-batch validation; never focuses or pings a window. |
 | [`editor.windows.list`](../Editor/Providers/EditorInspectionProvider.cs) | List open Editor windows, their identities, titles and bounds; does not open or focus windows. |
 | [`editor.scene_view.read`](../Editor/Providers/EditorInspectionProvider.cs) | Read bounded Scene view camera framing without moving the camera or acquiring writer ownership. |
-| [`editor.status`](../Editor/Providers/EditorStatusProvider.cs) | Editor state: isPlaying, isPaused, isCompiling, editorFocused, lastUserActivityAt, editorIdleForMs, activeScene, unityVersion, projectPath, mainThreadStalledMs (>0 means tools are likely timing out). |
+| [`editor.status`](../Editor/Providers/EditorStatusProvider.cs) | Compact readiness, project identity, worker capabilities, Play Mode ownership, writer state, and registry errors by default. Request detail=full for configuration, activity, scene and compile-history details. |
 | [`editor.stop`](../Editor/Providers/EditorStatusProvider.cs) | Exit only a Play Mode session started by editor.play. User-started Play Mode is protected. |
 | [`editor.tools.list`](../Editor/Providers/EditorStatusProvider.cs) | Search and page the live Unity-side tool registry. Returns compact name and availability records unless includeMetadata=true. |
 | [`editor.wait_ready`](../Editor/Providers/EditorStatusProvider.cs) | Wait until the Editor is ready, then return status plus a compact compile result. |

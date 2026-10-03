@@ -76,13 +76,21 @@ namespace LittleBrushGames.Mcp.Tests.Providers
         }
 
         [Test]
-        public void CompactStatusPreservesReadinessAndOmitsConfiguration()
+        public void DefaultStatusPreservesIdentityReadinessAndWorkerCapabilities()
         {
-            var result = EditorStatusProvider.ProjectStatus(JObject.Parse("{'isCompiling':true,'isUpdating':false,'playModeOwner':'user','projectPath':'large path','registryErrorCount':1}"), JObject.Parse("{'detail':'compact'}"));
+            var full = JObject.Parse("{'isCompiling':true,'isUpdating':false,'playModeOwner':'user','projectPath':'project','unityVersion':'version','worker':{'batchMode':true,'managed':true,'graphicsAvailable':false},'registryErrorCount':1,'trustPolicy':{'preset':'Custom'},'editorIdleForMs':12000}");
+            var result = EditorStatusProvider.ProjectStatus(full, new JObject());
             Assert.That((bool)result["isCompiling"], Is.True);
             Assert.That((string)result["playModeOwner"], Is.EqualTo("user"));
-            Assert.That(result["projectPath"], Is.Null);
+            Assert.That((string)result["projectPath"], Is.EqualTo("project"));
+            Assert.That((string)result["unityVersion"], Is.EqualTo("version"));
+            Assert.That((bool)result["worker"]["managed"], Is.True);
+            Assert.That((bool)result["worker"]["graphicsAvailable"], Is.False);
+            Assert.That(result["trustPolicy"], Is.Null);
+            Assert.That(result["editorIdleForMs"], Is.Null);
             Assert.That((int)result["registryErrorCount"], Is.EqualTo(1));
+            Assert.That(JToken.DeepEquals(result, EditorStatusProvider.ProjectStatus(full, JObject.Parse("{'detail':'compact'}"))), Is.True);
+            Assert.That(EditorStatusProvider.ProjectStatus(full, JObject.Parse("{'detail':'full'}")), Is.SameAs(full));
         }
 
         [Test]

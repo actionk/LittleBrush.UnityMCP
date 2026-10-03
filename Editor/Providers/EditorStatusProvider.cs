@@ -30,12 +30,12 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             yield return new ToolDescriptor
             {
                 Name = "editor.status",
-                Description = "Editor state: isPlaying, isPaused, isCompiling, editorFocused, lastUserActivityAt, editorIdleForMs, activeScene, unityVersion, projectPath, mainThreadStalledMs (>0 means tools are likely timing out).",
+                Description = "Compact Editor readiness, project identity, worker capabilities, Play Mode ownership, writer state, and registry errors. Request detail=full for configuration, activity, scene, and compile-history details.",
                 Availability = ToolAvailability.Always,
                 Execution = ToolExecution.Sync,
                 ReloadSafe = true,
                 RequiresMainThread = false,
-                InputSchema = JObject.Parse(@"{ 'type': 'object', 'properties': { 'detail': { 'enum': ['compact', 'full'] } } }"),
+                InputSchema = JObject.Parse(@"{ 'type': 'object', 'properties': { 'detail': { 'enum': ['compact', 'full'], 'default': 'compact' } } }"),
                 Handler = Status,
             };
             yield return new ToolDescriptor
@@ -61,7 +61,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             yield return new ToolDescriptor
             {
                 Name = "editor.metrics",
-                Description = "Page session-local MCP tool duration and serialized response-size metrics. Use query to inspect suspected high-context tools.",
+                Description = "Page session-local MCP duration, JSON text character counts excluding image payloads, and decoded image bytes. Use query to inspect suspected high-context tools.",
                 Availability = ToolAvailability.Always,
                 Execution = ToolExecution.Sync,
                 ReloadSafe = true,
@@ -308,9 +308,12 @@ namespace LittleBrushGames.Mcp.Editor.Providers
 
         internal static JObject ProjectStatus(JObject status, JObject arguments)
         {
-            if ((string)arguments?["detail"] != "compact") return status;
+            var detail = (string)arguments?["detail"] ?? "compact";
+            if (detail == "full") return status;
+            if (detail != "compact")
+                throw new McpToolException(McpErrorCodes.InvalidParams, "detail must be compact or full.");
             var compact = new JObject();
-            foreach (var key in new[] { "isPlaying", "playModeOwner", "isPaused", "isCompiling", "isUpdating", "mainThreadStalledMs", "compilePassCounter", "registryErrorCount", "registryErrors", "writer" })
+            foreach (var key in new[] { "projectPath", "unityVersion", "worker", "isPlaying", "playModeOwner", "isPaused", "isCompiling", "isUpdating", "mainThreadStalledMs", "compilePassCounter", "registryErrorCount", "registryErrors", "writer" })
                 if (status[key] != null) compact[key] = status[key];
             return compact;
         }

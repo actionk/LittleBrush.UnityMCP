@@ -266,11 +266,13 @@ namespace LittleBrushGames.Mcp.Editor.Transport
                     || arguments["layoutDetail"]?.Value<string>() == "full";
                 var imageCharacters = result.Value?.Content.OfType<ImageContent>()
                     .Sum(block => ((long)block.Data.Length + 2) / 3 * 4) ?? 0;
+                var imageBytes = result.Value?.Content.OfType<ImageContent>().Sum(block => (long)block.Data.Length) ?? 0;
                 var textResponseCharacters = (int)Math.Max(0, responseCharacters - imageCharacters);
                 var warn = McpToolMetrics.Record(
                     name,
                     stopwatch.ElapsedMilliseconds,
-                    responseCharacters,
+                    textResponseCharacters,
+                    imageBytes,
                     result.Error != null || result.Value?.IsError == true,
                     textResponseCharacters > McpToolMetrics.LargeResponseWarningCharacters
                     && !explicitLargeResponse);

@@ -473,7 +473,7 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
         public const int LargeResponseWarningCharacters = 32 * 1024;
         private static readonly ConcurrentDictionary<string, Entry> s_entries = new(StringComparer.Ordinal);
 
-        public static bool Record(string name, long durationMs, int responseCharacters, bool failed, bool warnCandidate)
+        public static bool Record(string name, long durationMs, int textResponseCharacters, long imageBytes, bool failed, bool warnCandidate)
         {
             var entry = s_entries.GetOrAdd(name ?? "<unknown>", _ => new Entry());
             lock (entry)
@@ -483,9 +483,12 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
                 entry.LastDurationMs = durationMs;
                 entry.TotalDurationMs += durationMs;
                 entry.MaxDurationMs = Math.Max(entry.MaxDurationMs, durationMs);
-                entry.LastResponseCharacters = responseCharacters;
-                entry.TotalResponseCharacters += responseCharacters;
-                entry.MaxResponseCharacters = Math.Max(entry.MaxResponseCharacters, responseCharacters);
+                entry.LastTextResponseCharacters = textResponseCharacters;
+                entry.TotalTextResponseCharacters += textResponseCharacters;
+                entry.MaxTextResponseCharacters = Math.Max(entry.MaxTextResponseCharacters, textResponseCharacters);
+                entry.LastImageBytes = imageBytes;
+                entry.TotalImageBytes += imageBytes;
+                entry.MaxImageBytes = Math.Max(entry.MaxImageBytes, imageBytes);
                 if (!warnCandidate || entry.LargeResponseWarned) return false;
                 entry.LargeResponseWarned = true;
                 return true;
@@ -531,9 +534,12 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
                     ["lastDurationMs"] = entry.LastDurationMs,
                     ["averageDurationMs"] = entry.Calls == 0 ? 0 : entry.TotalDurationMs / entry.Calls,
                     ["maxDurationMs"] = entry.MaxDurationMs,
-                    ["lastResponseCharacters"] = entry.LastResponseCharacters,
-                    ["averageResponseCharacters"] = entry.Calls == 0 ? 0 : entry.TotalResponseCharacters / entry.Calls,
-                    ["maxResponseCharacters"] = entry.MaxResponseCharacters,
+                    ["lastTextResponseCharacters"] = entry.LastTextResponseCharacters,
+                    ["averageTextResponseCharacters"] = entry.Calls == 0 ? 0 : entry.TotalTextResponseCharacters / entry.Calls,
+                    ["maxTextResponseCharacters"] = entry.MaxTextResponseCharacters,
+                    ["lastImageBytes"] = entry.LastImageBytes,
+                    ["averageImageBytes"] = entry.Calls == 0 ? 0 : entry.TotalImageBytes / entry.Calls,
+                    ["maxImageBytes"] = entry.MaxImageBytes,
                 };
             }
         }
@@ -545,9 +551,12 @@ namespace LittleBrushGames.Mcp.Editor.Dispatch
             public long LastDurationMs;
             public long TotalDurationMs;
             public long MaxDurationMs;
-            public long LastResponseCharacters;
-            public long TotalResponseCharacters;
-            public long MaxResponseCharacters;
+            public long LastTextResponseCharacters;
+            public long TotalTextResponseCharacters;
+            public long MaxTextResponseCharacters;
+            public long LastImageBytes;
+            public long TotalImageBytes;
+            public long MaxImageBytes;
             public bool LargeResponseWarned;
         }
     }

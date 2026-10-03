@@ -744,7 +744,7 @@ namespace LittleBrushGames.Mcp.Tests.Transport
             var entry = metrics["result"]["structuredContent"]["tools"][0];
 
             Assert.That((long)entry["calls"], Is.EqualTo(2));
-            Assert.That((long)entry["maxResponseCharacters"], Is.GreaterThan(McpToolMetrics.LargeResponseWarningCharacters));
+            Assert.That((long)entry["maxTextResponseCharacters"], Is.GreaterThan(McpToolMetrics.LargeResponseWarningCharacters));
             Assert.That((long)entry["maxDurationMs"], Is.GreaterThanOrEqualTo(0));
         }
 
@@ -789,6 +789,14 @@ namespace LittleBrushGames.Mcp.Tests.Transport
             var response = await _router.HandleAsync(request, CancellationToken.None);
             Assert.That(response["error"], Is.Null);
             Assert.That(log.Entries.Any(entry => entry.level == LogLevel.Warn && entry.message.Contains("without explicit full detail")), Is.EqualTo(warns));
+            var metrics = McpToolMetrics.CreateResponse(new JObject { ["query"] = name });
+            var entry = metrics["tools"][0];
+            var expectedImageBytes = largeImage ? 40000 : 1;
+            Assert.That((long)entry["lastImageBytes"], Is.EqualTo(expectedImageBytes));
+            Assert.That((long)entry["maxImageBytes"], Is.EqualTo(expectedImageBytes));
+            Assert.That((long)entry["lastTextResponseCharacters"], Is.EqualTo(
+                McpToolCallLogger.CountJsonCharacters(response) - (expectedImageBytes + 2) / 3 * 4));
+            Assert.That((long)entry["averageTextResponseCharacters"], Is.EqualTo((long)entry["lastTextResponseCharacters"]));
         }
         [Test]
         public async Task GatewayCatalogBatchesSchemasAndChangesRevisionOnlyWithContracts()

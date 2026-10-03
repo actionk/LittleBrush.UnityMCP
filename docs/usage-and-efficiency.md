@@ -47,8 +47,12 @@ feedback. Use the execution journal for snippet evidence. The file is created on
   using `registryRevision`, which is stable across rebuilds/reloads with identical public contracts;
   availability and trust decisions remain dynamic and must not be cached with the schema. `includeDescriptions` adds
   descriptions to searches without schemas. Existing `name` lookups still work.
-- `editor.status`: `detail: compact` omits configuration/activity details while retaining readiness,
-  ownership, stall and registry-error fields. Full status remains the default.
+- `editor.status` defaults to compact readiness, project path/Unity version, worker capabilities,
+  ownership, stall and registry-error fields. Request `detail: full` for configuration, activity,
+  scene and compile-history details.
+- `editor.metrics` separates `last/average/maxTextResponseCharacters` (JSON excluding image data)
+  from `last/average/maxImageBytes` (decoded images). These session-local fields replace the old
+  combined response-character fields; neither is a tokenizer measurement.
 - `tests.result`: pass the last `revision` as `afterRevision` to suppress unchanged payloads. Omit it when
   changing detail or pagination. Unchanged responses skip result projection. Follow `pollAfterMs`:
   ordinary progress uses 1 second, unchanged running results 2 seconds, and cleanup/cancellation 500 ms.
