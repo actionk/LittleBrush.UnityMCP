@@ -77,7 +77,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             var testsRun = new ToolDescriptor
             {
                 Name = "tests.run",
-                Description = "Run tests matching an optional filter under the Tests trust policy. Stopping user-owned Play Mode separately follows UserPlayModeStop. Dirty saved scenes are saved under the UnsavedWork policy; untitled scenes remain blocked. EditMode tests run in a temporary empty scene. Supply a unique runId (32 lowercase hex characters) before dispatch so a lost launch response can be recovered with tests.result. Otherwise use tests.runs to recover the generated ID. Never blindly repeat an unknown launch.",
+                Description = "Run tests matching an optional filter under the Tests trust policy. Stopping user-owned Play Mode separately follows UserPlayModeStop. Dirty saved scenes are saved under the UnsavedWork policy; untitled scenes remain blocked. EditMode tests run in a temporary empty scene. Supply a unique runId (32 lowercase hex characters) before dispatch so a lost launch response can be recovered with tests.result. Otherwise use tests.runs to recover the generated ID. Never blindly repeat an unknown launch. Current scripts must be compiled; optional inputPaths fingerprint fixture/content files alongside script inputs.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.LongRunning,
                 RequiresMainThread = true,
@@ -90,6 +90,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                         ""runId"": { ""type"": ""string"", ""minLength"": 32, ""maxLength"": 32, ""description"": ""Optional client-generated UUID without hyphens. Must be unique in this Editor session; reuse is rejected before scene changes. Poll tests.result with this ID if the launch response is lost."" },
                         ""mode"": { ""enum"": [""EditMode"", ""PlayMode""] },
                         ""reason"": { ""type"": ""string"", ""maxLength"": 500 },
+                        ""inputPaths"": { ""type"": ""array"", ""maxItems"": 128, ""items"": { ""type"": ""string"" }, ""description"": ""Optional project-relative fixture/content files to fingerprint alongside compiled scripts. Results report inputEvidence and changes during the run."" },
                         ""testNames"":     { ""type"": ""array"", ""items"": { ""type"": ""string"" } },
                         ""groupNames"":    { ""type"": ""array"", ""items"": { ""type"": ""string"" } },
                         ""categoryNames"": { ""type"": ""array"", ""items"": { ""type"": ""string"" } },
@@ -125,7 +126,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 ReloadSafe = true,
                 RequiresWriterLease = false,
                 ExclusiveGroup = "test",
-                Description = "Poll a test run without changing scenes. running, cancelling and restoring are nonterminal; completed means scene cleanup has finished. auto returns summary while pending and compact paged failures when finished. Request diagnostics explicitly for bounded stack traces and output.",
+                Description = "Poll a test run without changing scenes. running, cancelling and restoring are nonterminal; completed means scene cleanup has finished. auto returns summary while pending and compact paged failures when finished. Request diagnostics explicitly for bounded stack traces and output. inputEvidence records source fingerprints and whether inputs changed during the run; case success alone does not verify changed inputs.",
                 Availability = ToolAvailability.Always,
                 Execution = ToolExecution.Sync,
                 RequiresMainThread = true,
@@ -278,6 +279,11 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             var mode = ParseMode(modeStr) ?? TestMode.EditMode;
             var isPlayMode = (mode & TestMode.PlayMode) != 0;
 
+            var inputEvidence = CaptureInputEvidence(ToStringArray(ctx.Arguments["inputPaths"]));
+            if (inputEvidence.Value<bool>("compiled") != true)
+                throw new McpToolException(McpErrorCodes.ValidationFailed,
+                    "Current scripts are not verified compiled. Finish compilation before running tests.");
+
             await EnsureEditModeForTests(ctx, ct);
             var autoSavedScenes = await PrepareScenesForTestRun(ctx, ct);
             await EnsureEditModeForTests(ctx, ct);
@@ -295,8 +301,8 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             var api = UnityEngine.ScriptableObject.CreateInstance<TestRunnerApi>();
 
             var result = isPlayMode
-                ? await RunPlayModeTests(api, filter, runId, ctx.Arguments, handlerStartedAt)
-                : await RunEditModeTests(api, filter, runId, ctx.Arguments, handlerStartedAt);
+                ? await RunPlayModeTests(api, filter, runId, ctx.Arguments, handlerStartedAt, inputEvidence)
+                : await RunEditModeTests(api, filter, runId, ctx.Arguments, handlerStartedAt, inputEvidence);
 
             if (autoSavedScenes.Count > 0)
                 result.StructuredContent["autoSavedScenes"] = autoSavedScenes;
@@ -380,12 +386,13 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             return new JArray();
         }
 
-        private static ValueTask<ToolResult> RunEditModeTests(TestRunnerApi api, Filter filter, string runId, JObject arguments, long handlerStartedAt)
+        private static ValueTask<ToolResult> RunEditModeTests(TestRunnerApi api, Filter filter, string runId, JObject arguments, long handlerStartedAt, JObject inputEvidence)
         {
 
             SessionState.SetString(SceneSnapshotKeyPrefix + runId, CaptureScenes(includeViews: true).ToString());
             var state = CreateRunningState(runId, TestMode.EditMode.ToString());
             state["handlerStartedAt"] = handlerStartedAt;
+            state["inputEvidence"] = new JObject { ["start"] = inputEvidence };
             SessionState.SetString(SessionKeyPrefix + runId, state.ToString());
             RecordRun(state, arguments);
             AddActiveRunId(runId);
@@ -419,7 +426,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             return new ValueTask<ToolResult>(ToolResult.Ok(response));
         }
 
-        private static ValueTask<ToolResult> RunPlayModeTests(TestRunnerApi api, Filter filter, string runId, JObject arguments, long handlerStartedAt)
+        private static ValueTask<ToolResult> RunPlayModeTests(TestRunnerApi api, Filter filter, string runId, JObject arguments, long handlerStartedAt, JObject inputEvidence)
         {
 
             // Snapshot the open scene set BEFORE Play Mode begins — Unity swaps in
@@ -431,6 +438,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             // Store initial state in SessionState (survives domain reload)
             var state = CreateRunningState(runId, TestMode.PlayMode.ToString());
             state["handlerStartedAt"] = handlerStartedAt;
+            state["inputEvidence"] = new JObject { ["start"] = inputEvidence };
             SessionState.SetString(SessionKeyPrefix + runId, state.ToString());
             RecordRun(state, arguments);
             AddActiveRunId(runId);
@@ -579,7 +587,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             };
             if (revision != null) result["revision"] = revision;
             CopyIfPresent(state, result, "finishedAt", "assertCount", "durationSec", "overallStatus", "message", "consoleSuppression", "sceneRestoreError", "sceneSnapshot", "testsFinishedAt",
-                "handlerStartedAt", "runnerStartedAt", "frameworkIdleAt", "restoreStartedAt");
+                "handlerStartedAt", "runnerStartedAt", "frameworkIdleAt", "restoreStartedAt", "inputEvidence");
             if (running)
                 result["pollAfterMs"] = status is "restoring" or "cancelling" ? 500 : 1000;
 
@@ -765,6 +773,7 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
                 if (!string.IsNullOrEmpty(json)) RestoreScenesNow(JObject.Parse(json));
                 state["status"] = state["terminalStatus"]?.Value<string>() ?? (string)state["status"];
                 state["finishedAt"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                CompleteInputEvidence(state);
                 SaveHistory(state);
                 SessionState.SetString(SessionKeyPrefix + runId, state.ToString());
                 McpTestProgressOverlay.Publish(state);
@@ -774,6 +783,60 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner
             catch (Exception ex)
             {
                 RecordRestoreFailure(runId, state, ex);
+            }
+        }
+
+        private static JObject CaptureInputEvidence(string[] paths)
+        {
+            var files = new JObject();
+            var root = System.IO.Path.GetFullPath(System.IO.Path.Combine(UnityEngine.Application.dataPath, ".."));
+            long totalBytes = 0;
+            foreach (var path in paths ?? Array.Empty<string>())
+            {
+                var full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, path));
+                if (System.IO.Path.IsPathRooted(path) || !full.StartsWith(root + System.IO.Path.DirectorySeparatorChar,
+                        StringComparison.OrdinalIgnoreCase) || !System.IO.File.Exists(full))
+                    throw new McpToolException(McpErrorCodes.InvalidParams, "inputPaths must identify existing files inside the project.");
+                long bytes = new System.IO.FileInfo(full).Length;
+                if (bytes > 16 * 1024 * 1024 || (totalBytes += bytes) > 64 * 1024 * 1024)
+                    throw new McpToolException(McpErrorCodes.InvalidParams, "inputPaths supports 16 MiB per file and 64 MiB total.");
+                using var stream = System.IO.File.OpenRead(full);
+                using var hash = System.Security.Cryptography.SHA256.Create();
+                files[System.IO.Path.GetRelativePath(root, full).Replace('\\', '/')] = BitConverter.ToString(hash.ComputeHash(stream));
+            }
+            var current = LittleBrushGames.Mcp.Editor.Providers.CompileErrorStore.ComputeInputHash();
+            var compiled = LittleBrushGames.Mcp.Editor.Providers.CompileErrorStore.LastInputHash;
+            return new JObject
+            {
+                ["scriptInputHash"] = current,
+                ["compilePassCounter"] = LittleBrushGames.Mcp.Editor.Providers.CompileErrorStore.PassCounter,
+                ["compiled"] = !EditorApplication.isCompiling && !EditorApplication.isUpdating
+                    && !string.IsNullOrEmpty(current) && current == compiled
+                    && !LittleBrushGames.Mcp.Editor.Providers.CompileErrorStore.Snapshot().Any(message => message.Type == UnityEditor.Compilation.CompilerMessageType.Error),
+                ["files"] = files,
+            };
+        }
+
+        internal static bool SameInputs(JObject start, JObject end) =>
+            start?.Value<bool>("compiled") == true && end?.Value<bool>("compiled") == true
+            && !string.IsNullOrEmpty(start.Value<string>("scriptInputHash"))
+            && start.Value<string>("scriptInputHash") == end.Value<string>("scriptInputHash")
+            && JToken.DeepEquals(start["files"], end["files"]);
+
+        private static void CompleteInputEvidence(JObject state)
+        {
+            if (state["inputEvidence"] is not JObject evidence || evidence["start"] is not JObject start) return;
+            try
+            {
+                var paths = ((JObject)start["files"]).Properties().Select(property => property.Name).ToArray();
+                var end = CaptureInputEvidence(paths);
+                evidence["end"] = end;
+                evidence["unchanged"] = SameInputs(start, end);
+            }
+            catch (Exception error)
+            {
+                evidence["unchanged"] = false;
+                evidence["error"] = error.Message;
             }
         }
 

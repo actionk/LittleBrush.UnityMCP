@@ -35,7 +35,7 @@ namespace LittleBrushGames.Mcp.Editor.Diagnostics
             if (tests.Count > MaxTestsPerRun) throw new IOException("Test history supports at most 10,000 cases per run; this run was not archived.");
             var run = new JObject();
             foreach (var key in new[] { "runId", "mode", "status", "startedAt", "finishedAt", "durationSec", "passCount", "failCount",
-                         "handlerStartedAt", "runnerStartedAt", "testsFinishedAt", "frameworkIdleAt", "restoreStartedAt" })
+                         "handlerStartedAt", "runnerStartedAt", "testsFinishedAt", "frameworkIdleAt", "restoreStartedAt", "inputEvidence" })
                 run[key] = state[key]?.DeepClone();
             run["unityVersion"] = unityVersion;
             run["wallDurationSec"] = Math.Max(0, ((long?)state["finishedAt"] - (long?)state["startedAt"] ?? 0) / 1000.0);

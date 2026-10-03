@@ -21,6 +21,15 @@ namespace LittleBrushGames.Mcp.Tests.Transport
         };
 
         [Test]
+        public void HistoryPreservesInputEvidenceAcrossReload()
+        {
+            var run = Run("inputs", 1);
+            run["inputEvidence"] = JObject.Parse("{ 'start': { 'scriptInputHash': 'first' }, 'end': { 'scriptInputHash': 'second' }, 'unchanged': false }");
+            McpTestHistory.Record(PathName, run, "6000");
+            Assert.That(JToken.DeepEquals(McpTestHistory.Read(PathName)["runs"][0]["inputEvidence"], run["inputEvidence"]), Is.True);
+        }
+
+        [Test]
         public void LifecycleTimingsIncludePreparationAndKeepLegacyWallMeaning()
         {
             var state = Run("phases", 2);

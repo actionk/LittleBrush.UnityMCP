@@ -14,6 +14,28 @@ namespace LittleBrushGames.Mcp.Modules.TestRunner.Tests
 {
     public sealed class TestRunnerStateTests
     {
+        [Test]
+        public void InputEvidenceRejectsConcurrentEditsAndUnverifiedCompilation()
+        {
+            var start = JObject.Parse("{ 'compiled': true, 'scriptInputHash': 'original', 'files': { 'fixture.json': 'a' } }");
+            var end = (JObject)start.DeepClone();
+            Assert.That(TestRunnerProvider.SameInputs(start, end), Is.True);
+            end["compilePassCounter"] = 99; // A repeat compile alone does not change inputs.
+            Assert.That(TestRunnerProvider.SameInputs(start, end), Is.True);
+            end["scriptInputHash"] = "edited";
+            Assert.That(TestRunnerProvider.SameInputs(start, end), Is.False);
+            end["scriptInputHash"] = "original";
+            end["files"]["fixture.json"] = "b";
+            Assert.That(TestRunnerProvider.SameInputs(start, end), Is.False);
+            end["files"]["fixture.json"] = "a";
+            end["compiled"] = false;
+            Assert.That(TestRunnerProvider.SameInputs(start, end), Is.False);
+            var state = TestRunnerProvider.CreateRunningState("evidence", "EditMode");
+            state["inputEvidence"] = new JObject { ["start"] = start, ["end"] = end, ["unchanged"] = false };
+            var response = TestRunnerProvider.CreateResultResponse(state, "summary", 0, 25);
+            Assert.That(response["inputEvidence"]["unchanged"].Value<bool>(), Is.False);
+        }
+
         [TestCase("running", true, "Running tests…")]
         [TestCase("cancelling", false, "Cancelling tests…")]
         [TestCase("restoring", false, "Restoring scenes…")]
