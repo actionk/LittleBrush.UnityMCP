@@ -202,11 +202,11 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             {
                 Name = "prefab.preview_screenshot",
                 RequiresGraphics = true,
-                Description = "Render a UI or 3D prefab offscreen in an isolated preview scene during Edit or Play Mode. UI prefabs report resolved layout ownership, clipping, overlap, and text-fit warnings; 3D prefabs copy gameplay camera settings, auto-frame renderer bounds, and accept an optional Euler rotation override.",
+                Description = "Render a UI or 3D prefab in isolation during Edit or Play Mode. UI layout counts are compact by default; use layoutDetail and layoutPath for paged diagnostics. 3D prefabs copy gameplay camera settings and auto-frame renderer bounds.",
                 Availability = ToolAvailability.Either,
                 Execution = ToolExecution.Sync,
                 RequiresMainThread = true,
-                InputSchema = JObject.Parse(@"{
+                InputSchema = ToolResponseProjection.LayoutSchema(JObject.Parse(@"{
                     ""type"": ""object"",
                     ""required"": [""path""],
                     ""properties"": {
@@ -246,7 +246,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                         },
                         ""framePadding"": { ""type"": ""number"", ""minimum"": 0, ""maximum"": 1, ""description"": ""3D only: fractional bounds padding; defaults to 0.1."" }
                     }
-                }"),
+                }")),
                 Handler = PreviewScreenshot,
             };
 
@@ -994,6 +994,18 @@ namespace LittleBrushGames.Mcp.Editor.Providers
         }
 
         private static ValueTask<ToolResult> PreviewScreenshot(ToolContext ctx, CancellationToken ct)
+            => new(ProjectPreview(PreviewWithLayout(ctx, ct).GetAwaiter().GetResult(), ctx.Arguments));
+
+        public static ToolResult ProjectPreview(ToolResult result, JObject args)
+        {
+            if (result.StructuredContent?["layoutReport"] is JObject report)
+                result.StructuredContent["layoutReport"] = ToolResponseProjection.Layout(report, args);
+            ToolResponseProjection.CheckBudget(result.StructuredContent, args);
+            return result;
+        }
+
+        // Shared internal operation: callers project the full report before returning it to MCP.
+        public static ValueTask<ToolResult> PreviewWithLayout(ToolContext ctx, CancellationToken ct, bool render = true)
         {
             var path = AssetProvider.NormalizeAssetPath((string)ctx.Arguments["path"]
                 ?? throw new McpToolException(McpErrorCodes.ValidationFailed, "path required."));
@@ -1117,6 +1129,12 @@ namespace LittleBrushGames.Mcp.Editor.Providers
                 Canvas.ForceUpdateCanvases();
                 var rootSize = rect.rect.size;
                 var layoutReport = BuildLayoutReport(rect, canvasRect);
+                if (!render)
+                    return new ValueTask<ToolResult>(ToolResult.Ok(new JObject
+                    {
+                        ["layoutReport"] = layoutReport,
+                        ["logicalViewportSize"] = new JArray(logicalViewport.x, logicalViewport.y),
+                    }));
                 preview.BeginStaticPreview(new Rect(0, 0, width, height));
                 preview.Render(true, false);
                 tex = preview.EndStaticPreview();

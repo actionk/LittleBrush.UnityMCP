@@ -762,6 +762,34 @@ namespace LittleBrushGames.Mcp.Tests.Transport
             Assert.That(recordedName, Is.EqualTo("probe.usage"));
             Assert.That(recordedResponse["result"], Is.Not.Null);
         }
+
+        [TestCase(null, false, true, true)]
+        [TestCase(null, true, false, false)]
+        [TestCase("profile", true, true, false)]
+        [TestCase("layoutDetail", true, true, false)]
+        public async Task LargeResponseWarningMeasuresJsonBesideImages(string fullOption, bool largeImage, bool largeJson, bool warns)
+        {
+            var log = new FakeLogSink();
+            var name = "probe.budget-" + Guid.NewGuid().ToString("N");
+            var registry = new ToolRegistry();
+            registry.SetEditorProviders(new IToolProvider[] { new InlineProvider(name, (_, _) =>
+                new ValueTask<ToolResult>(ToolResult.Ok(new JObject
+                {
+                    ["payload"] = new string('x', largeJson ? 40000 : 1),
+                }, new ImageContent { Data = new byte[largeImage ? 40000 : 1], MimeType = "image/png" }))) });
+            var dispatcher = new ToolDispatcher(registry, new FakeMainThreadPump(), new FakeFrameWaiter(), log, () => (false, false));
+            _router = new JsonRpcRouter(registry, dispatcher, () => (false, false), log);
+            var args = new JObject();
+            if (fullOption != null) args[fullOption] = "full";
+            var request = new JObject
+            {
+                ["jsonrpc"] = "2.0", ["id"] = 1, ["method"] = "tools/call",
+                ["params"] = new JObject { ["name"] = "unity.call", ["arguments"] = new JObject { ["tool"] = name, ["arguments"] = args } },
+            };
+            var response = await _router.HandleAsync(request, CancellationToken.None);
+            Assert.That(response["error"], Is.Null);
+            Assert.That(log.Entries.Any(entry => entry.level == LogLevel.Warn && entry.message.Contains("without explicit full detail")), Is.EqualTo(warns));
+        }
         [Test]
         public async Task GatewayCatalogBatchesSchemasAndChangesRevisionOnlyWithContracts()
         {

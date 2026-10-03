@@ -261,19 +261,22 @@ namespace LittleBrushGames.Mcp.Editor.Transport
                 stopwatch.Stop();
                 dispatchMs = stopwatch.ElapsedMilliseconds;
                 responseCharacters = McpToolCallLogger.CountJsonCharacters(response);
-                var explicitLargeResponse = arguments["detail"]?.Value<string>() is "all" or "full" or "diagnostics";
-                var containsImage = result.Value?.Content.Any(block => block is ImageContent) == true;
+                var explicitLargeResponse = arguments["detail"]?.Value<string>() is "all" or "full" or "diagnostics"
+                    || arguments["profile"]?.Value<string>() == "full"
+                    || arguments["layoutDetail"]?.Value<string>() == "full";
+                var imageCharacters = result.Value?.Content.OfType<ImageContent>()
+                    .Sum(block => ((long)block.Data.Length + 2) / 3 * 4) ?? 0;
+                var textResponseCharacters = (int)Math.Max(0, responseCharacters - imageCharacters);
                 var warn = McpToolMetrics.Record(
                     name,
                     stopwatch.ElapsedMilliseconds,
                     responseCharacters,
                     result.Error != null || result.Value?.IsError == true,
-                    responseCharacters > McpToolMetrics.LargeResponseWarningCharacters
-                    && !explicitLargeResponse
-                    && !containsImage);
+                    textResponseCharacters > McpToolMetrics.LargeResponseWarningCharacters
+                    && !explicitLargeResponse);
                 if (warn)
                     _log?.Log(LogLevel.Warn,
-                        $"Tool '{name}' returned {responseCharacters} JSON characters without explicit full detail; consider a compact default or pagination.");
+                        $"Tool '{name}' returned {textResponseCharacters} JSON characters excluding images without explicit full detail; consider a compact default or pagination.");
                 var expectedFailure = result.Error?.IsExpected == true
                                       || (result.Value?.IsError == true && result.Value.IsExpectedFailure);
                 McpToolCallLogger.Log(

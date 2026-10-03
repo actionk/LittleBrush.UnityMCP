@@ -150,6 +150,8 @@ Structured JSON is not copied into a text block. A JSON-only success therefore h
 - Polling tools return progress summaries while running and bounded failure/detail pages when complete.
 - Do not emit null or empty stack traces, output, or diagnostic fields.
 - Do not duplicate structured JSON into `content`; add content blocks only for text or media the client must render.
+- `ToolResponseProjection` supplies shared page metadata, JSON character-budget checks, and paged UI layout diagnostics. Apply projection before returning read results; keep complete internal data for validation and image cropping. Do not reject a completed mutation because its response is large: project its report instead.
+- Large-response warnings measure JSON excluding image data, including JSON accompanying images. Explicit `detail`, `profile`, or `layoutDetail` full requests suppress the warning; they do not disable provider page limits or character budgets.
 - Keep tool descriptions short; input schemas own argument documentation.
 
 ## Progress and cancellation

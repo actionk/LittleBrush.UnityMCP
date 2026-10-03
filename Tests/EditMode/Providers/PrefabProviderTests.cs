@@ -11,6 +11,36 @@ namespace LittleBrushGames.Mcp.Tests.Providers
     public class PrefabProviderTests
     {
         [Test]
+        public void LayoutDiagnosticsDefaultToCountsAndPageExplicitDetails()
+        {
+            var report = new JObject
+            {
+                ["nodes"] = new JArray(Enumerable.Range(0, 100).Select(i => new JObject { ["path"] = "Root/" + i })),
+                ["warnings"] = new JArray(Enumerable.Range(0, 100).Select(i => new JObject
+                {
+                    ["path"] = "Root/" + i, ["code"] = "overlap", ["message"] = new string('x', 1000),
+                })),
+            };
+            var summary = ToolResponseProjection.Layout(report, new JObject());
+            Assert.That(summary["nodes"], Is.Null);
+            Assert.That(summary["warnings"], Is.Null);
+            Assert.That((int)summary["warningCounts"]["overlap"], Is.EqualTo(100));
+            Assert.That(summary.ToString().Length, Is.LessThan(1000));
+            var args = new JObject { ["layoutDetail"] = "full", ["layoutPath"] = "Root/42", ["layoutWarningLimit"] = 1 };
+            var selected = ToolResponseProjection.Layout(report, args);
+            Assert.That(((JArray)selected["nodes"]).Count, Is.EqualTo(1));
+            Assert.That((string)selected["warnings"][0]["path"], Is.EqualTo("Root/42"));
+            args.Remove("layoutPath");
+            args["layoutNodeOffset"] = 25;
+            var page = ToolResponseProjection.Layout(report, args);
+            Assert.That((string)page["nodes"][0]["path"], Is.EqualTo("Root/25"));
+            Assert.That((int)page["nodesPage"]["nextOffset"], Is.EqualTo(50));
+            Assert.That(((JArray)page["warnings"]).Count, Is.EqualTo(1));
+            args["maxResponseCharacters"] = 1000;
+            Assert.Throws<McpToolException>(() => ToolResponseProjection.CheckBudget(selected, args));
+        }
+
+        [Test]
         public void RegisterTools_DeclaresAllPrefabTools()
         {
             var sink = Collect(new PrefabProvider());
