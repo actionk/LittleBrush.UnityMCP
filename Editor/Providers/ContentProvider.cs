@@ -188,7 +188,7 @@ namespace LittleBrushGames.Mcp.Editor.Providers
             return result;
         }
 
-        private static JToken ResolvePointer(JToken root, string pointer)
+        public static JToken ResolvePointer(JToken root, string pointer)
         {
             if (string.IsNullOrEmpty(pointer)) return root;
             if (!pointer.StartsWith("/", StringComparison.Ordinal))
